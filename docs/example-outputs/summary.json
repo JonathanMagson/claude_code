@@ -1,0 +1,363 @@
+{
+  "aoi": "Pilliga East (demo)",
+  "crs": "EPSG:32755",
+  "area_ha": 1024.0,
+  "optical_acquisitions": 512,
+  "radar_acquisitions": 427,
+  "periods": {
+    "pre": [
+      "2019-03-01",
+      "2019-11-30"
+    ],
+    "post": [
+      "2020-03-01",
+      "2020-11-30"
+    ],
+    "series": [
+      "2019-01-01",
+      "2025-12-31"
+    ]
+  },
+  "normalisation_offsets": {
+    "dnbr": 0.0038825348019599915,
+    "dndvi": 0.003993332386016846,
+    "vh_db": 0.19490623474121094,
+    "vv_db": 0.19547033309936523
+  },
+  "tiers": {
+    "confirmed": {
+      "patches": 9,
+      "area_ha": 84.24,
+      "description": "Both sensors agree: the canopy went and the structure went with it. This is the tier to act on."
+    },
+    "s2_only": {
+      "patches": 1,
+      "area_ha": 24.61,
+      "description": "Spectral loss with no matching structural loss. Typically fire, drought dieback, a harvested or fallowed paddock, or an unmasked cloud shadow. Review before treating as clearing."
+    },
+    "s1_only": {
+      "patches": 0,
+      "area_ha": 0.0,
+      "description": "Structural loss with no matching spectral loss. Often thinning or selective removal under retained canopy, an inundated surface, or a gap in cloud-free optical coverage. Review."
+    }
+  },
+  "recovery": {
+    "recovered": {
+      "patches": 1,
+      "area_ha": 4.66,
+      "description": "Back to at least 80% of the pre-clearing baseline (R80P)."
+    },
+    "recovering": {
+      "patches": 4,
+      "area_ha": 49.43,
+      "description": "Trending up but not yet at 80% of baseline."
+    },
+    "stalled": {
+      "patches": 1,
+      "area_ha": 12.23,
+      "description": "Well below baseline with no meaningful upward trend - the site is being held open, by grazing, repeat cultivation or drought."
+    },
+    "recleared": {
+      "patches": 3,
+      "area_ha": 17.92,
+      "description": "Recovered part-way, then dropped again: a second clearing or disturbance event on the same ground."
+    }
+  },
+  "runtime_seconds": {
+    "detect_optical": 15.03,
+    "detect_radar": 3.33,
+    "fuse": 0.02,
+    "estimate_event_dates": 8.28,
+    "analyse_regrowth": 15.86,
+    "validate": 6.55
+  },
+  "validation": {
+    "pixel": {
+      "fused_confirmed": {
+        "label": "confirmed tier (S1 + S2)",
+        "true_positive": 8382,
+        "false_positive": 42,
+        "false_negative": 110,
+        "precision": 0.995,
+        "recall": 0.987,
+        "f1": 0.991,
+        "iou": 0.9822
+      },
+      "fused_any_tier": {
+        "label": "any tier",
+        "true_positive": 8382,
+        "false_positive": 2503,
+        "false_negative": 110,
+        "precision": 0.7701,
+        "recall": 0.987,
+        "f1": 0.8651,
+        "iou": 0.7623
+      },
+      "sentinel2_only": {
+        "label": "Sentinel-2 detector alone",
+        "true_positive": 8400,
+        "false_positive": 2456,
+        "false_negative": 92,
+        "precision": 0.7738,
+        "recall": 0.9892,
+        "f1": 0.8683,
+        "iou": 0.7673
+      },
+      "sentinel1_only": {
+        "label": "Sentinel-1 detector alone",
+        "true_positive": 8160,
+        "false_positive": 42,
+        "false_negative": 332,
+        "precision": 0.9949,
+        "recall": 0.9609,
+        "f1": 0.9776,
+        "iou": 0.9562
+      }
+    },
+    "matches": [
+      {
+        "reference_id": 1,
+        "reference_area_ha": 40.0,
+        "size_class": "10-50 ha",
+        "detected": true,
+        "detected_id": 1,
+        "detected_area_ha": 39.8,
+        "iou": 0.995,
+        "tier": "confirmed",
+        "fragments": 1
+      },
+      {
+        "reference_id": 2,
+        "reference_area_ha": 12.0,
+        "size_class": "10-50 ha",
+        "detected": true,
+        "detected_id": 2,
+        "detected_area_ha": 12.23,
+        "iou": 0.98,
+        "tier": "confirmed",
+        "fragments": 1
+      },
+      {
+        "reference_id": 3,
+        "reference_area_ha": 5.0,
+        "size_class": "2-10 ha",
+        "detected": true,
+        "detected_id": 3,
+        "detected_area_ha": 4.66,
+        "iou": 0.932,
+        "tier": "confirmed",
+        "fragments": 1
+      },
+      {
+        "reference_id": 4,
+        "reference_area_ha": 2.0,
+        "size_class": "2-10 ha",
+        "detected": true,
+        "detected_id": 4,
+        "detected_area_ha": 1.91,
+        "iou": 0.917,
+        "tier": "confirmed",
+        "fragments": 1
+      },
+      {
+        "reference_id": 5,
+        "reference_area_ha": 0.8,
+        "size_class": "0.5-2 ha",
+        "detected": true,
+        "detected_id": 5,
+        "detected_area_ha": 0.79,
+        "iou": 0.988,
+        "tier": "confirmed",
+        "fragments": 1
+      },
+      {
+        "reference_id": 6,
+        "reference_area_ha": 0.3,
+        "size_class": "<0.5 ha",
+        "detected": false,
+        "detected_id": null,
+        "detected_area_ha": null,
+        "iou": 0.0,
+        "tier": null,
+        "fragments": 0
+      },
+      {
+        "reference_id": 7,
+        "reference_area_ha": 18.0,
+        "size_class": "10-50 ha",
+        "detected": true,
+        "detected_id": 6,
+        "detected_area_ha": 16.47,
+        "iou": 0.915,
+        "tier": "confirmed",
+        "fragments": 3
+      },
+      {
+        "reference_id": 8,
+        "reference_area_ha": 6.82,
+        "size_class": "2-10 ha",
+        "detected": true,
+        "detected_id": 10,
+        "detected_area_ha": 6.93,
+        "iou": 0.978,
+        "tier": "confirmed",
+        "fragments": 1
+      }
+    ],
+    "size_class_recall": {
+      "<0.5 ha": {
+        "reference_patches": 1,
+        "detected": 0,
+        "recall": 0.0,
+        "mean_iou": 0.0,
+        "reference_ha": 0.3
+      },
+      "0.5-2 ha": {
+        "reference_patches": 1,
+        "detected": 1,
+        "recall": 1.0,
+        "mean_iou": 0.988,
+        "reference_ha": 0.8
+      },
+      "2-10 ha": {
+        "reference_patches": 3,
+        "detected": 3,
+        "recall": 1.0,
+        "mean_iou": 0.942,
+        "reference_ha": 13.82
+      },
+      "10-50 ha": {
+        "reference_patches": 3,
+        "detected": 3,
+        "recall": 1.0,
+        "mean_iou": 0.963,
+        "reference_ha": 70.0
+      }
+    },
+    "decoys": {
+      "fire scar": {
+        "reference_ha": 25.0,
+        "confirmed_ha": 0.0,
+        "confirmed_fraction": 0.0,
+        "s2_only_ha": 24.61,
+        "s2_only_fraction": 0.9844,
+        "s1_only_ha": 0.0,
+        "s1_only_fraction": 0.0
+      },
+      "cropping": {
+        "reference_ha": 67.62,
+        "confirmed_ha": 0.0,
+        "confirmed_fraction": 0.0,
+        "s2_only_ha": 0.0,
+        "s2_only_fraction": 0.0,
+        "s1_only_ha": 0.0,
+        "s1_only_fraction": 0.0
+      },
+      "cropped then fallowed": {
+        "reference_ha": 20.0,
+        "confirmed_ha": 0.0,
+        "confirmed_fraction": 0.0,
+        "s2_only_ha": 0.0,
+        "s2_only_fraction": 0.0,
+        "s1_only_ha": 0.0,
+        "s1_only_fraction": 0.0
+      },
+      "stable background": {
+        "reference_ha": 826.46,
+        "confirmed_ha": 0.42,
+        "confirmed_fraction": 0.0005,
+        "s2_only_ha": 0.0,
+        "s2_only_fraction": 0.0,
+        "s1_only_ha": 0.0,
+        "s1_only_fraction": 0.0
+      }
+    },
+    "area": {
+      "detected_ha": 84.24,
+      "reference_ha": 84.92,
+      "bias_ha": -0.68,
+      "bias_percent": -0.8
+    },
+    "latency": {
+      "per_patch": [
+        {
+          "patch_id": 1,
+          "event_date": "2020-01-15",
+          "s2_detection_date": "2020-01-16",
+          "s1_detection_date": "2020-01-20",
+          "first_detection_date": "2020-01-16",
+          "s2_latency_days": 1,
+          "s1_latency_days": 5
+        },
+        {
+          "patch_id": 2,
+          "event_date": "2020-02-10",
+          "s2_detection_date": "2020-02-20",
+          "s1_detection_date": "2020-02-13",
+          "first_detection_date": "2020-02-13",
+          "s2_latency_days": 10,
+          "s1_latency_days": 3
+        },
+        {
+          "patch_id": 3,
+          "event_date": "2020-01-20",
+          "s2_detection_date": "2020-02-10",
+          "s1_detection_date": "2020-01-20",
+          "first_detection_date": "2020-01-20",
+          "s2_latency_days": 21,
+          "s1_latency_days": 0
+        },
+        {
+          "patch_id": 4,
+          "event_date": "2020-02-01",
+          "s2_detection_date": "2020-02-25",
+          "s1_detection_date": "2020-02-01",
+          "first_detection_date": "2020-02-01",
+          "s2_latency_days": 24,
+          "s1_latency_days": 0
+        },
+        {
+          "patch_id": 5,
+          "event_date": "2020-01-25",
+          "s2_detection_date": "2020-02-15",
+          "s1_detection_date": "2020-01-26",
+          "first_detection_date": "2020-01-26",
+          "s2_latency_days": 21,
+          "s1_latency_days": 1
+        },
+        {
+          "patch_id": 6,
+          "event_date": "2020-02-05",
+          "s2_detection_date": "2020-02-05",
+          "s1_detection_date": "2020-02-07",
+          "first_detection_date": "2020-02-05",
+          "s2_latency_days": 0,
+          "s1_latency_days": 2
+        },
+        {
+          "patch_id": 7,
+          "event_date": "2020-01-05",
+          "s2_detection_date": "2020-02-25",
+          "s1_detection_date": "2020-01-08",
+          "first_detection_date": "2020-01-08",
+          "s2_latency_days": 51,
+          "s1_latency_days": 3
+        },
+        {
+          "patch_id": 8,
+          "event_date": "2020-02-20",
+          "s2_detection_date": "2020-02-20",
+          "s1_detection_date": "2020-02-25",
+          "first_detection_date": "2020-02-20",
+          "s2_latency_days": 0,
+          "s1_latency_days": 5
+        }
+      ],
+      "s2_median_days": 15.5,
+      "s1_median_days": 2.5,
+      "s2_max_days": 51.0,
+      "s1_max_days": 5.0,
+      "advantage_days": 13.0
+    }
+  }
+}
