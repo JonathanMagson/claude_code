@@ -9,7 +9,7 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-from vegmon.config import PipelineConfig
+from vegmon.config import Periods, PipelineConfig
 from vegmon.detect import (
     EventTiming,
     OpticalChange,
@@ -48,7 +48,7 @@ class PipelineResult:
                 self.scene.grid.width * self.scene.grid.height * self.scene.grid.pixel_area_ha, 1
             ),
             "optical_acquisitions": len(self.scene.optical),
-            "radar_acquisitions": len(self.scene.radar),
+            "radar_acquisitions": len(self.scene.radar) if self.scene.radar else 0,
             "periods": {
                 "pre": [self.config.periods.pre_start.isoformat(), self.config.periods.pre_end.isoformat()],
                 "post": [self.config.periods.post_start.isoformat(), self.config.periods.post_end.isoformat()],
@@ -58,6 +58,8 @@ class PipelineResult:
                 ],
             },
             "normalisation_offsets": {**self.optical.offsets, **self.radar.offsets},
+            "resolved_thresholds": self.optical.thresholds,
+            "confirming_source": self.clearing.confirming_source,
             "tiers": self.clearing.summary(),
             "recovery": self.regrowth.summary(),
             "runtime_seconds": {k: round(v, 2) for k, v in self.timings_seconds.items()},
@@ -92,10 +94,25 @@ def run_pipeline(
     optical = step(
         "detect_optical", lambda: detect_optical(scene.optical, config.periods, config.detection)
     )
-    radar = step(
-        "detect_radar", lambda: detect_radar(scene.radar, config.periods, config.detection)
-    )
-    clearing = step("fuse", lambda: fuse(optical, radar, config.detection))
+    if scene.radar is not None:
+        confirming = step(
+            "detect_radar", lambda: detect_radar(scene.radar, config.periods, config.detection)
+        )
+    else:
+        # No reachable Sentinel-1 for this AOI. Persistence is a weaker second
+        # opinion - it does not reject fire - but it is independent of the
+        # observations that produced the detection, which is the property that
+        # matters. The tier description carried on the map says which was used.
+        from vegmon.persistence import detect_persistence
+
+        confirming = step(
+            "detect_persistence",
+            lambda: detect_persistence(
+                scene.optical, optical, config.periods, config.detection
+            ),
+        )
+    radar = confirming
+    clearing = step("fuse", lambda: fuse(optical, confirming, config.detection))
 
     # Date each detected patch from the time series rather than assuming the
     # midpoint of the gap. A regrowth curve fitted from the wrong start date
@@ -125,6 +142,15 @@ def run_pipeline(
             config.regrowth,
             event_dates=event_dates,
             tiers=regrowth_tiers,
+            # Measure recovery against undisturbed *woody* ground, not against
+            # the whole scene. On a cropping-belt AOI the scene median is
+            # mostly paddock, and normalising regrowth against a crop rotation
+            # imports exactly the cycle the normalisation exists to remove.
+            reference_mask=(
+                optical.gates["woody_before"]
+                & optical.gates["persistently_woody"]
+                & (clearing.components == 0)
+            ),
         ),
     )
 
@@ -168,4 +194,81 @@ def run_pipeline(
     )
 
 
-__all__ = ["PipelineResult", "run_pipeline"]
+def scan_epochs(
+    scene: Scene,
+    config: PipelineConfig,
+    first_year: int,
+    last_year: int,
+    start_month_day: tuple = (3, 1),
+    end_month_day: tuple = (9, 30),
+) -> List[dict]:
+    """Run the detector over every consecutive year pair in the record.
+
+    A single before/after pair answers "was this cleared between these two
+    dates". A monitoring programme needs the other question - "what happened
+    each year" - and the answer is a different shape: an annual table where
+    the interesting rows are the ones that stand out from their neighbours.
+    Running the epochs together also makes the confounds visible. A year pair
+    straddling a drought onset lights up across the whole scene in small
+    patches; a clearing year produces a few large ones. Neither is obvious
+    from one pair alone.
+    """
+    from vegmon.detect import detect_optical, detect_radar
+    from vegmon.fuse import fuse
+
+    rows: List[dict] = []
+    for year in range(first_year, last_year):
+        periods = Periods(
+            pre_start=date(year, *start_month_day),
+            pre_end=date(year, *end_month_day),
+            post_start=date(year + 1, *start_month_day),
+            post_end=date(year + 1, *end_month_day),
+            series_start=config.periods.series_start,
+            series_end=config.periods.series_end,
+        )
+        try:
+            optical = detect_optical(
+                scene.optical, periods, config.detection, check_phenology=False
+            )
+            if scene.radar is not None:
+                confirming = detect_radar(scene.radar, periods, config.detection)
+            else:
+                from vegmon.persistence import detect_persistence
+
+                confirming = detect_persistence(
+                    scene.optical, optical, periods, config.detection
+                )
+            clearing = fuse(optical, confirming, config.detection)
+        except Exception as exc:  # a short or cloud-starved epoch is not fatal
+            rows.append({"epoch": f"{year}-{year + 1}", "error": str(exc)[:120]})
+            continue
+
+        summary = clearing.summary()
+        woody = (
+            optical.gates["woody_before"]
+            & optical.gates["persistently_woody"]
+            & optical.gates["steady_through_the_year"]
+        )
+        confirmed = [r for r in clearing.records if r["tier"] == "confirmed"]
+        rows.append(
+            {
+                "epoch": f"{year}-{year + 1}",
+                "woody_fraction": round(float(woody.mean()), 4),
+                "dnbr_threshold": round(optical.thresholds["dnbr_threshold"], 4),
+                "confirmed_patches": summary["confirmed"]["patches"],
+                "confirmed_ha": summary["confirmed"]["area_ha"],
+                "review_ha": round(
+                    summary["s2_only"]["area_ha"] + summary["s1_only"]["area_ha"], 2
+                ),
+                "largest_patch_ha": round(
+                    max((r["area_ha"] for r in confirmed), default=0.0), 2
+                ),
+                "median_patch_ha": round(
+                    float(np.median([r["area_ha"] for r in confirmed])) if confirmed else 0.0, 2
+                ),
+            }
+        )
+    return rows
+
+
+__all__ = ["PipelineResult", "run_pipeline", "scan_epochs"]

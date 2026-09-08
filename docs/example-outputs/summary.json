@@ -19,32 +19,40 @@
     ]
   },
   "normalisation_offsets": {
-    "dnbr": 0.0038825348019599915,
-    "dndvi": 0.003993332386016846,
+    "dnbr": 0.0041207969188690186,
+    "dndvi": 0.003984794020652771,
     "vh_db": 0.19490623474121094,
     "vv_db": 0.19547033309936523
   },
+  "resolved_thresholds": {
+    "min_pre_ndvi": 0.4,
+    "min_pre_nbr": 0.18,
+    "min_pre_ndvi_persistent": 0.35,
+    "dnbr_threshold": 0.2,
+    "dndvi_threshold": 0.15
+  },
+  "confirming_source": "Sentinel-1 structural change",
   "tiers": {
     "confirmed": {
       "patches": 9,
-      "area_ha": 84.24,
-      "description": "Both sensors agree: the canopy went and the structure went with it. This is the tier to act on."
+      "area_ha": 84.03,
+      "description": "Both lines of evidence agree. This is the tier to act on."
     },
     "s2_only": {
       "patches": 1,
-      "area_ha": 24.61,
+      "area_ha": 23.43,
       "description": "Spectral loss with no matching structural loss. Typically fire, drought dieback, a harvested or fallowed paddock, or an unmasked cloud shadow. Review before treating as clearing."
     },
     "s1_only": {
       "patches": 0,
       "area_ha": 0.0,
-      "description": "Structural loss with no matching spectral loss. Often thinning or selective removal under retained canopy, an inundated surface, or a gap in cloud-free optical coverage. Review."
+      "description": "Structural loss with no matching spectral loss. Often thinning or selective removal under retained canopy, an inundated surface, or a gap in cloud-free optical coverage. Review. Empty by construction when the confirming evidence is corroborating rather than independent."
     }
   },
   "recovery": {
     "recovered": {
       "patches": 1,
-      "area_ha": 4.66,
+      "area_ha": 4.56,
       "description": "Back to at least 80% of the pre-clearing baseline (R80P)."
     },
     "recovering": {
@@ -59,49 +67,49 @@
     },
     "recleared": {
       "patches": 3,
-      "area_ha": 17.92,
+      "area_ha": 17.81,
       "description": "Recovered part-way, then dropped again: a second clearing or disturbance event on the same ground."
     }
   },
   "runtime_seconds": {
-    "detect_optical": 15.03,
-    "detect_radar": 3.33,
-    "fuse": 0.02,
-    "estimate_event_dates": 8.28,
-    "analyse_regrowth": 15.86,
-    "validate": 6.55
+    "detect_optical": 21.27,
+    "detect_radar": 2.48,
+    "fuse": 0.01,
+    "estimate_event_dates": 6.3,
+    "analyse_regrowth": 16.09,
+    "validate": 5.38
   },
   "validation": {
     "pixel": {
       "fused_confirmed": {
         "label": "confirmed tier (S1 + S2)",
-        "true_positive": 8382,
+        "true_positive": 8361,
         "false_positive": 42,
-        "false_negative": 110,
+        "false_negative": 131,
         "precision": 0.995,
-        "recall": 0.987,
-        "f1": 0.991,
-        "iou": 0.9822
+        "recall": 0.9846,
+        "f1": 0.9898,
+        "iou": 0.9797
       },
       "fused_any_tier": {
         "label": "any tier",
-        "true_positive": 8382,
-        "false_positive": 2503,
-        "false_negative": 110,
-        "precision": 0.7701,
-        "recall": 0.987,
-        "f1": 0.8651,
-        "iou": 0.7623
+        "true_positive": 8361,
+        "false_positive": 2385,
+        "false_negative": 131,
+        "precision": 0.7781,
+        "recall": 0.9846,
+        "f1": 0.8692,
+        "iou": 0.7687
       },
       "sentinel2_only": {
         "label": "Sentinel-2 detector alone",
-        "true_positive": 8400,
-        "false_positive": 2456,
-        "false_negative": 92,
-        "precision": 0.7738,
-        "recall": 0.9892,
-        "f1": 0.8683,
-        "iou": 0.7673
+        "true_positive": 8208,
+        "false_positive": 2192,
+        "false_negative": 284,
+        "precision": 0.7892,
+        "recall": 0.9666,
+        "f1": 0.8689,
+        "iou": 0.7683
       },
       "sentinel1_only": {
         "label": "Sentinel-1 detector alone",
@@ -143,8 +151,8 @@
         "size_class": "2-10 ha",
         "detected": true,
         "detected_id": 3,
-        "detected_area_ha": 4.66,
-        "iou": 0.932,
+        "detected_area_ha": 4.56,
+        "iou": 0.912,
         "tier": "confirmed",
         "fragments": 1
       },
@@ -187,8 +195,8 @@
         "size_class": "10-50 ha",
         "detected": true,
         "detected_id": 6,
-        "detected_area_ha": 16.47,
-        "iou": 0.915,
+        "detected_area_ha": 16.4,
+        "iou": 0.911,
         "tier": "confirmed",
         "fragments": 3
       },
@@ -223,14 +231,14 @@
         "reference_patches": 3,
         "detected": 3,
         "recall": 1.0,
-        "mean_iou": 0.942,
+        "mean_iou": 0.936,
         "reference_ha": 13.82
       },
       "10-50 ha": {
         "reference_patches": 3,
         "detected": 3,
         "recall": 1.0,
-        "mean_iou": 0.963,
+        "mean_iou": 0.962,
         "reference_ha": 70.0
       }
     },
@@ -239,8 +247,8 @@
         "reference_ha": 25.0,
         "confirmed_ha": 0.0,
         "confirmed_fraction": 0.0,
-        "s2_only_ha": 24.61,
-        "s2_only_fraction": 0.9844,
+        "s2_only_ha": 23.43,
+        "s2_only_fraction": 0.9372,
         "s1_only_ha": 0.0,
         "s1_only_fraction": 0.0
       },
@@ -273,10 +281,10 @@
       }
     },
     "area": {
-      "detected_ha": 84.24,
+      "detected_ha": 84.03,
       "reference_ha": 84.92,
-      "bias_ha": -0.68,
-      "bias_percent": -0.8
+      "bias_ha": -0.89,
+      "bias_percent": -1.05
     },
     "latency": {
       "per_patch": [

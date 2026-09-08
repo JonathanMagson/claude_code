@@ -336,8 +336,12 @@ def build_report(
         ),
         _tile(
             "Observations used",
-            f"{len(result.scene.optical) + len(result.scene.radar):,}",
-            f"{len(result.scene.optical)} Sentinel-2 + {len(result.scene.radar)} Sentinel-1",
+            f"{len(result.scene.optical) + _radar_count(result):,}",
+            (
+                f"{len(result.scene.optical)} Sentinel-2 + {_radar_count(result)} Sentinel-1"
+                if _radar_count(result)
+                else f"{len(result.scene.optical)} Sentinel-2 acquisitions, no radar available"
+            ),
         ),
     ]
     if validation:
@@ -360,10 +364,11 @@ def build_report(
     # --- detection --------------------------------------------------------
     parts.append("<h2>Detection</h2>")
     parts.append(
-        "<p>Sentinel-2 supplies the spectral evidence and Sentinel-1 the structural "
-        "evidence. Only where the two agree is a patch called clearing; a detection "
-        "on one sensor alone is reported, not discarded, because the single-sensor "
-        "tiers are informative in themselves.</p>"
+        f"<p>Sentinel-2 supplies the spectral evidence. The second, independent "
+        f"opinion comes from <strong>{_esc(clearing.confirming_source)}</strong>: a "
+        f"patch is only called confirmed where {_esc(clearing.confirming_description)}. "
+        "A detection carried by one line of evidence alone is reported, not "
+        "discarded, because those tiers are informative in themselves.</p>"
     )
     parts.append('<div class="legend">')
     for key, label, slot in (
@@ -385,14 +390,22 @@ def build_report(
              for r, k in zip(tier_rows, ("confirmed", "s2_only", "s1_only"))],
         )
     )
+    # The confirming column depends on what supplied the second opinion:
+    # Sentinel-1 contributes a VH drop, persistence a season count.
+    if clearing.records and "mean_vh_drop_db" in clearing.records[0]:
+        confirming_column = ("VH drop (dB)", "mean_vh_drop_db", "{:.2f}")
+    else:
+        confirming_column = ("Seasons still down", "seasons_below", "{:.1f}")
     parts.append(
         _details_table(
             "Table view: every detected patch",
-            ["Patch", "Tier", "Area (ha)", "dNBR", "VH drop (dB)", "Agreement", "Pre NDVI"],
+            ["Patch", "Tier", "Area (ha)", "dNBR", confirming_column[0],
+             "Agreement", "Pre NDVI"],
             [
                 [
                     r["patch_id"], r["tier"], f"{r['area_ha']:.2f}",
-                    r["mean_dnbr"], r["mean_vh_drop_db"],
+                    r["mean_dnbr"],
+                    _fmt(r.get(confirming_column[1]), confirming_column[2]),
                     f"{r['agreement_fraction']:.0%}", r["pre_ndvi"],
                 ]
                 for r in sorted(clearing.records, key=lambda r: -r["area_ha"])
@@ -409,12 +422,16 @@ def build_report(
             )
         )
 
+    offset_bits = [f'{result.optical.offsets["dnbr"]:+.3f} in dNBR']
+    if "vh_db" in result.radar.offsets:
+        offset_bits.append(f'{result.radar.offsets["vh_db"]:+.2f} dB in Sentinel-1 VH')
     parts.append(
-        f'<div class="note">Inter-date normalisation removed a '
-        f'{result.optical.offsets["dnbr"]:+.3f} dNBR and '
-        f'{result.radar.offsets["vh_db"]:+.2f} dB common-mode offset before thresholding. '
-        "Without that step the same thresholds would have to be re-tuned for every "
-        "date pair.</div>"
+        f'<div class="note">Inter-date normalisation removed a common-mode offset of '
+        f'{" and ".join(offset_bits)} before thresholding. Without that step the same '
+        "thresholds would have to be re-tuned for every date pair.<br/>"
+        "Thresholds actually applied: "
+        + ", ".join(f"{k} {v:.3f}" for k, v in sorted(result.optical.thresholds.items()))
+        + ".</div>"
     )
 
     # --- regrowth ---------------------------------------------------------
@@ -658,6 +675,10 @@ and should be calibrated against local reference sites before operational use.</
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(document, encoding="utf-8")
     return path
+
+
+def _radar_count(result) -> int:
+    return len(result.scene.radar) if result.scene.radar is not None else 0
 
 
 def _fmt(value, spec: str, fallback: str = "-") -> str:

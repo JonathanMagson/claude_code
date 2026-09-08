@@ -140,11 +140,22 @@ def plot_change_maps(
     axes[2].set_title("Spectral change\ndNBR (pre - post, normalised)", loc="left")
     _colourbar(figure, dnbr_image, axes[2], "dNBR")
 
-    vh_image = axes[3].imshow(
-        radar.vh_drop_db, cmap=pal.colormap(pal.ORANGE_RAMP, "vh"), vmin=0.0, vmax=6.0
-    )
-    axes[3].set_title("Structural change\nSentinel-1 VH drop (dB)", loc="left")
-    _colourbar(figure, vh_image, axes[3], "dB")
+    if hasattr(radar, "vh_drop_db"):
+        vh_image = axes[3].imshow(
+            radar.vh_drop_db, cmap=pal.colormap(pal.ORANGE_RAMP, "vh"), vmin=0.0, vmax=6.0
+        )
+        axes[3].set_title("Structural change\nSentinel-1 VH drop (dB)", loc="left")
+        _colourbar(figure, vh_image, axes[3], "dB")
+    else:
+        seasons = getattr(radar, "seasons_checked", 0)
+        vh_image = axes[3].imshow(
+            radar.seasons_below, cmap=pal.colormap(pal.ORANGE_RAMP, "persist"),
+            vmin=0, vmax=max(seasons, 1),
+        )
+        axes[3].set_title(
+            f"Confirming evidence\nseasons still down, of {seasons} checked", loc="left"
+        )
+        _colourbar(figure, vh_image, axes[3], "seasons")
 
     axes[4].imshow(_tier_rgb(clearing), interpolation="nearest")
     summary = clearing.summary()
@@ -158,9 +169,9 @@ def plot_change_maps(
         handles=[
             Patch(facecolor=pal.TIER_COLOURS[tier], label=f"{label} ({summary[tier]['area_ha']:.1f} ha)")
             for tier, label in (
-                ("confirmed", "Confirmed: S1 + S2"),
-                ("s2_only", "S2 only - review"),
-                ("s1_only", "S1 only - review"),
+                ("confirmed", "Confirmed by both lines of evidence"),
+                ("s2_only", "Spectral change only - review"),
+                ("s1_only", "Confirming evidence only - review"),
             )
         ],
         loc="upper left",
@@ -192,7 +203,8 @@ def plot_change_maps(
         axes[5].set_visible(False)
 
     figure.suptitle(
-        "Land clearing detection: Sentinel-2 spectral change confirmed by Sentinel-1 structural change",
+        "Land clearing detection: Sentinel-2 spectral change, confirmed by "
+        + clearing.confirming_source,
         x=0.012,
         ha="left",
         fontsize=13,
@@ -263,7 +275,7 @@ def plot_recovery(
     cols = min(3, len(patches))
     rows = int(np.ceil(len(patches) / cols))
     figure, axes = plt.subplots(
-        rows, cols, figsize=(4.5 * cols, 3.1 * rows), squeeze=False, sharex=True, sharey=True
+        rows, cols, figsize=(4.6 * cols, 3.4 * rows), squeeze=False, sharex=True, sharey=True
     )
     flat = axes.ravel()
 
@@ -363,7 +375,7 @@ def plot_recovery(
         fontsize=13,
         color=pal.INK_PRIMARY,
     )
-    figure.tight_layout(rect=(0, 0.05, 1, 0.95))
+    figure.tight_layout(rect=(0, 0.06, 1, 0.94))
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     figure.savefig(path, dpi=dpi)

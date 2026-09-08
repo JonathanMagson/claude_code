@@ -181,11 +181,24 @@ class OpticalSeries:
         end: date,
         max_cloud_cover: float = 1.0,
         dilation_pixels: int = 3,
+        reducer: str = "medoid",
     ) -> OpticalComposite:
-        """Per-pixel median of every cloud-free observation in the window."""
+        """Cloud-free composite over a window.
+
+        ``reducer="medoid"`` (the default) picks the single real observation
+        per pixel closest to the per-band median, so every composite pixel is
+        a spectrally consistent spectrum. ``reducer="median"`` takes each band
+        independently, which is faster but manufactures spectra that no
+        acquisition recorded - see :func:`vegmon.masking.masked_medoid`.
+        """
         sub = self.select(start, end, max_cloud_cover=max_cloud_cover)
         valid = sub.valid_mask(dilation_pixels=dilation_pixels)
-        bands = {name: masking.masked_median(arr, valid) for name, arr in sub.bands.items()}
+        if reducer == "medoid":
+            bands = masking.masked_medoid(sub.bands, valid)
+        elif reducer == "median":
+            bands = {name: masking.masked_median(arr, valid) for name, arr in sub.bands.items()}
+        else:
+            raise ValueError(f"unknown reducer {reducer!r}; use 'medoid' or 'median'")
         return OpticalComposite(
             grid=self.grid,
             start=start,
@@ -305,12 +318,16 @@ class Scene:
     """The pair of series that the pipeline consumes, plus optional truth."""
 
     optical: OpticalSeries
-    radar: RadarSeries
+    radar: Optional[RadarSeries]
+    """May be ``None``. Several free catalogues carry no analysis-ready
+    Sentinel-1 over Australia, and the pipeline falls back to temporal
+    persistence as its confirming evidence rather than refusing to run."""
+
     grid: Grid
     truth: Optional[Mapping[str, object]] = None
 
     def __post_init__(self) -> None:
-        if self.optical.grid.shape != self.radar.grid.shape:
+        if self.radar is not None and self.optical.grid.shape != self.radar.grid.shape:
             raise ValueError("optical and radar series are on different grids")
 
 

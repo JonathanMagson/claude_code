@@ -1,0 +1,75 @@
+{
+  "aoi": "Boggabri / Maules Creek woodland margin (55JGG)",
+  "crs": "EPSG:32755",
+  "area_ha": 10485.8,
+  "optical_acquisitions": 643,
+  "radar_acquisitions": 0,
+  "periods": {
+    "pre": [
+      "2022-03-01",
+      "2022-09-30"
+    ],
+    "post": [
+      "2023-03-01",
+      "2023-09-30"
+    ],
+    "series": [
+      "2019-01-01",
+      "2025-12-31"
+    ]
+  },
+  "normalisation_offsets": {
+    "dnbr": 0.033841729164123535,
+    "dndvi": 0.031243324279785156,
+    "level": 0.08228786492586136
+  },
+  "resolved_thresholds": {
+    "min_pre_ndvi": 0.4,
+    "min_pre_nbr": 0.18,
+    "min_pre_ndvi_persistent": 0.35,
+    "dnbr_threshold": 0.13714644154310227,
+    "dndvi_threshold": 0.09782350351810455
+  },
+  "confirming_source": "temporal persistence",
+  "tiers": {
+    "confirmed": {
+      "patches": 24,
+      "area_ha": 29.92,
+      "description": "Both lines of evidence agree. This is the tier to act on."
+    },
+    "s2_only": {
+      "patches": 8,
+      "area_ha": 13.76,
+      "description": "Spectral loss with no matching structural loss. Typically fire, drought dieback, a harvested or fallowed paddock, or an unmasked cloud shadow. Review before treating as clearing."
+    },
+    "s1_only": {
+      "patches": 0,
+      "area_ha": 0.0,
+      "description": "Structural loss with no matching spectral loss. Often thinning or selective removal under retained canopy, an inundated surface, or a gap in cloud-free optical coverage. Review. Empty by construction when the confirming evidence is corroborating rather than independent."
+    }
+  },
+  "recovery": {
+    "recovered": {
+      "patches": 8,
+      "area_ha": 9.0,
+      "description": "Back to at least 80% of the pre-clearing baseline (R80P)."
+    },
+    "recovering": {
+      "patches": 11,
+      "area_ha": 16.8,
+      "description": "Trending up but not yet at 80% of baseline."
+    },
+    "cultivated": {
+      "patches": 5,
+      "area_ha": 4.12,
+      "description": "Swinging hard with the seasons and trending nowhere - the site is in production, not regrowing. Cropping and woody regrowth reach similar annual-average greenness; only the size of the within-year swing separates them."
+    }
+  },
+  "runtime_seconds": {
+    "detect_optical": 104.71,
+    "detect_persistence": 20.03,
+    "fuse": 0.07,
+    "estimate_event_dates": 24.49,
+    "analyse_regrowth": 47.31
+  }
+}

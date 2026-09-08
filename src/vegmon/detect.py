@@ -77,8 +77,18 @@ class OpticalChange:
     dndvi: np.ndarray
     pre_ndvi_persistent: np.ndarray
     mask: np.ndarray
+    pre_ndvi_typical: Optional[np.ndarray] = None
+    """Temporal median of pre-window NDVI - what the woody gate actually reads."""
+
+    pre_nbr_typical: Optional[np.ndarray] = None
+    pre_amplitude: Optional[np.ndarray] = None
+    """Within-year NDVI swing before the event - the crop-versus-woody test."""
     gates: Dict[str, np.ndarray] = field(default_factory=dict)
     offsets: Dict[str, float] = field(default_factory=dict)
+    thresholds: Dict[str, float] = field(default_factory=dict)
+    """The thresholds actually used, after any adaptive resolution. Always
+    report these rather than the configured ones - under adaptive thresholding
+    they are the only record of what the detector actually asked for."""
 
     @property
     def score(self) -> np.ndarray:
@@ -156,9 +166,45 @@ def detect_optical(
 
     enough_pre = pre.n_obs >= config.min_clear_observations
     enough_post = post.n_obs >= config.min_clear_observations
-    was_woody = (pre.ndvi >= config.min_pre_ndvi) & (pre.nbr >= config.min_pre_nbr)
-    persistent = pre_ndvi_persistent >= config.min_pre_ndvi_persistent
     not_water = pre.ndwi < 0.0
+
+    # The woody gates read the *temporal median of the index*, not the index of
+    # a band composite. Any band-wise composite reduces each band
+    # independently, so over a pixel that swings through the year the composite
+    # NDVI can sit far above anything the pixel actually reached - on a real
+    # NSW cropping scene, 0.42 against a true temporal median of 0.20. Gating
+    # on that walks crop straight through a woody-cover test.
+    pre_ndvi_typical = _temporal_percentile(
+        series, periods.pre_start, periods.pre_end, config, "ndvi", 50.0
+    )
+    pre_nbr_typical = _temporal_percentile(
+        series, periods.pre_start, periods.pre_end, config, "nbr", 50.0
+    )
+
+    pre_amplitude = None
+    steady = np.ones(series.grid.shape, dtype=bool)
+    if config.max_pre_seasonal_amplitude is not None:
+        amplitude_start = _shift_months(periods.pre_end, -config.pre_amplitude_months)
+        amplitude_start = max(amplitude_start, periods.series_start)
+        high = _temporal_percentile(
+            series, amplitude_start, periods.pre_end, config, "ndvi", 90.0
+        )
+        low = _temporal_percentile(
+            series, amplitude_start, periods.pre_end, config, "ndvi", 10.0
+        )
+        pre_amplitude = (high - low).astype(np.float32)
+        steady = np.nan_to_num(
+            pre_amplitude <= config.max_pre_seasonal_amplitude, nan=False
+        ).astype(bool)
+
+    thresholds = _resolve_woody_thresholds(
+        config, pre_ndvi_typical, pre_nbr_typical, pre_ndvi_persistent,
+        enough_pre & enough_post & not_water & steady,
+    )
+    was_woody = (pre_ndvi_typical >= thresholds["min_pre_ndvi"]) & (
+        pre_nbr_typical >= thresholds["min_pre_nbr"]
+    )
+    persistent = pre_ndvi_persistent >= thresholds["min_pre_ndvi_persistent"]
 
     # Normalise against every valid land pixel, not just the woody ones.
     # Restricting the population to pixels that pass the woody gate sounds
@@ -174,8 +220,17 @@ def detect_optical(
     dnbr = (raw_dnbr - nbr_offset).astype(np.float32)
     dndvi = (raw_dndvi - ndvi_offset).astype(np.float32)
 
-    lost_nbr = dnbr >= config.dnbr_threshold
-    lost_ndvi = dndvi >= config.dndvi_threshold
+    woody_population = (
+        was_woody & persistent & steady & enough_pre & enough_post & not_water
+    )
+    thresholds["dnbr_threshold"] = _resolve_change_threshold(
+        config, dnbr, woody_population, config.dnbr_threshold
+    )
+    thresholds["dndvi_threshold"] = _resolve_change_threshold(
+        config, dndvi, woody_population, config.dndvi_threshold
+    )
+    lost_nbr = dnbr >= thresholds["dnbr_threshold"]
+    lost_ndvi = dndvi >= thresholds["dndvi_threshold"]
 
     gates = {
         "observations_pre": enough_pre,
@@ -183,6 +238,7 @@ def detect_optical(
         "woody_before": was_woody,
         "persistently_woody": persistent,
         "not_water": not_water,
+        "steady_through_the_year": steady,
         "nbr_drop": lost_nbr,
         "ndvi_drop": lost_ndvi,
     }
@@ -192,8 +248,8 @@ def detect_optical(
 
     with np.errstate(invalid="ignore", divide="ignore"):
         score = np.minimum(
-            dnbr / max(config.dnbr_threshold, 1e-6),
-            dndvi / max(config.dndvi_threshold, 1e-6),
+            dnbr / max(thresholds["dnbr_threshold"], 1e-6),
+            dndvi / max(thresholds["dndvi_threshold"], 1e-6),
         )
     score = np.where(np.isfinite(score), score, 0.0).astype(np.float32)
 
@@ -205,10 +261,76 @@ def detect_optical(
         dndvi=dndvi,
         pre_ndvi_persistent=pre_ndvi_persistent,
         mask=mask,
+        pre_ndvi_typical=pre_ndvi_typical,
+        pre_nbr_typical=pre_nbr_typical,
+        pre_amplitude=pre_amplitude,
         gates=gates,
         offsets={"dnbr": nbr_offset, "dndvi": ndvi_offset},
+        thresholds=thresholds,
         _score=score,
     )
+
+
+def _shift_months(when: date, months: int) -> date:
+    total = when.year * 12 + (when.month - 1) + months
+    return date(total // 12, total % 12 + 1, 1)
+
+
+def _resolve_woody_thresholds(
+    config: DetectionConfig,
+    pre_ndvi: np.ndarray,
+    pre_nbr: np.ndarray,
+    pre_persistent: np.ndarray,
+    valid: np.ndarray,
+) -> Dict[str, float]:
+    """Fixed woody thresholds, or scene-relative ones under adaptive mode."""
+    thresholds = {
+        "min_pre_ndvi": float(config.min_pre_ndvi),
+        "min_pre_nbr": float(config.min_pre_nbr),
+        "min_pre_ndvi_persistent": float(config.min_pre_ndvi_persistent),
+    }
+    quantile = config.adaptive_woody_quantile
+    if quantile is None:
+        return thresholds
+
+    floor = float(config.min_pre_ndvi_absolute)
+    for key, layer, absolute_floor in (
+        ("min_pre_ndvi", pre_ndvi, floor),
+        ("min_pre_nbr", pre_nbr, -1.0),
+        ("min_pre_ndvi_persistent", pre_persistent, floor),
+    ):
+        sample = layer[valid & np.isfinite(layer)]
+        if sample.size < 64:
+            continue
+        thresholds[key] = max(absolute_floor, float(np.quantile(sample, quantile)))
+    return thresholds
+
+
+def _resolve_change_threshold(
+    config: DetectionConfig,
+    delta: np.ndarray,
+    population: np.ndarray,
+    fixed: float,
+) -> float:
+    """Fixed change threshold, or a robust outlier threshold over the woody set.
+
+    ``median + k * MAD`` scaled to a normal-equivalent standard deviation. It
+    asks "how large a drop is anomalous *for this scene*", which is the
+    question that transfers between date pairs; a fixed number is only ever
+    right for the pair it was tuned on.
+    """
+    multiplier = config.adaptive_change_mad
+    if multiplier is None:
+        return float(fixed)
+    sample = delta[population & np.isfinite(delta)]
+    if sample.size < 64:
+        return float(fixed)
+    median = float(np.median(sample))
+    mad = float(np.median(np.abs(sample - median)))
+    if mad <= 0:
+        return float(fixed)
+    adaptive = median + multiplier * 1.4826 * mad
+    return float(max(adaptive, config.adaptive_change_floor * fixed))
 
 
 def _temporal_percentile(
@@ -353,7 +475,7 @@ def _to_date(value) -> date:
 
 def estimate_event_timing(
     optical: OpticalSeries,
-    radar: RadarSeries,
+    radar: Optional[RadarSeries],
     labels: np.ndarray,
     patch_ids: List[int],
     periods: Periods,
@@ -387,7 +509,7 @@ def estimate_event_timing(
 
     optical_window = optical.select(start, end)
     nbr_stack = optical_window.index_stack("nbr") if len(optical_window) else None
-    radar_window = radar.select(start, end)
+    radar_window = radar.select(start, end) if radar is not None else None
 
     pre_optical = optical.composite(
         periods.pre_start, periods.pre_end, max_cloud_cover=config.max_cloud_cover
@@ -395,8 +517,10 @@ def estimate_event_timing(
     post_optical = optical.composite(
         periods.post_start, periods.post_end, max_cloud_cover=config.max_cloud_cover
     )
-    pre_radar = radar.composite(periods.pre_start, periods.pre_end, config.speckle_window)
-    post_radar = radar.composite(periods.post_start, periods.post_end, config.speckle_window)
+    pre_radar = post_radar = None
+    if radar is not None:
+        pre_radar = radar.composite(periods.pre_start, periods.pre_end, config.speckle_window)
+        post_radar = radar.composite(periods.post_start, periods.post_end, config.speckle_window)
 
     results: List[EventTiming] = []
     for patch_id in patch_ids:
@@ -419,7 +543,7 @@ def estimate_event_timing(
             )
 
         s1_date = None
-        if len(radar_window):
+        if radar_window is not None and len(radar_window):
             baseline = float(np.nanmean(pre_radar.vh_db[mask]))
             floor = float(np.nanmean(post_radar.vh_db[mask]))
             s1_date = _first_sustained_crossing(

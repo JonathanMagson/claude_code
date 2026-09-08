@@ -14,7 +14,7 @@ import warnings
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Dict, Mapping, Tuple
+from typing import Any, Dict, Mapping, Optional, Tuple
 
 
 def _as_date(value: Any) -> date:
@@ -152,6 +152,60 @@ class DetectionConfig:
     pre_percentile: float = 10.0
     """Percentile used for the persistence gate above."""
 
+    max_pre_seasonal_amplitude: Optional[float] = None
+    """Largest within-year NDVI swing, before the event, that still counts as woody.
+
+    Persistent greenness alone is not a woody-cover test, and irrigated
+    cropping is what proves it. Cotton in the Namoi valley holds NDVI above
+    0.6 for most of the year and clears any persistence gate comfortably; a
+    paddock going from cotton to fallow then produces a dNBR of 0.7 that is
+    indistinguishable from clearing on a bitemporal pair. What separates them
+    is the *shape* of the year: woody vegetation in these landscapes is
+    largely evergreen and moves little, while any crop - irrigated or not -
+    swings hard between planting and harvest.
+
+    Measured as the 90th minus the 10th percentile of NDVI over
+    :attr:`pre_amplitude_months` before the baseline ends. Around 0.35 keeps
+    open woodland and rejects cropping."""
+
+    pre_amplitude_months: int = 24
+    """Window before the baseline over which the swing above is measured. Needs
+    to span at least one full growing cycle, so at least 12; 24 averages two
+    and is more robust to a single odd season."""
+
+    min_pre_ndvi_absolute: float = 0.15
+    """Hard safety floor for the woody gates under adaptive thresholding.
+
+    Nothing below this is woody vegetation in any season or any season's
+    rainfall, so an adaptive threshold is never allowed to drop under it."""
+
+    adaptive_woody_quantile: Optional[float] = None
+    """If set, the woody gates become 'in the top (1 - q) of this scene's own
+    distribution' rather than fixed values.
+
+    Absolute index thresholds do not transfer between landscapes or between
+    years. Persistent NDVI over the Croppa Creek cropping belt in the 2019
+    drought peaks around 0.30; the same country in the 2021 La Nina clears
+    0.60. A fixed floor tuned on one of those rejects the entire scene in the
+    other. Setting this to, say, 0.85 asks instead for the greenest 15% of the
+    scene - which is what "woody" means relative to the paddocks around it -
+    and keeps :attr:`min_pre_ndvi_absolute` underneath as a sanity floor."""
+
+    adaptive_change_mad: Optional[float] = None
+    """If set, the dNBR and dNDVI thresholds become ``median + k * MAD`` of the
+    change distribution over the woody population, floored at
+    ``adaptive_change_floor`` times the fixed threshold.
+
+    Same reasoning, applied to the change side: how large a drop is anomalous
+    depends on how much the season moved everywhere else. A robust outlier
+    threshold transfers between date pairs where a fixed one does not. Values
+    around 3 work on real scenes: the change distribution is heavy-tailed, so a
+    multiplier chosen as if it were Gaussian rejects everything."""
+
+    adaptive_change_floor: float = 0.6
+    """Lower bound on an adaptive change threshold, as a fraction of the fixed
+    one. Stops a scene with almost no real change from setting a hair trigger."""
+
     dnbr_threshold: float = 0.20
     """Minimum NBR drop (pre - post) to call a pixel disturbed. ~0.10-0.25 is
     the usual 'low severity' band in the fire literature; clearing sits well
@@ -230,6 +284,28 @@ class RegrowthConfig:
 
     stalled_slope_per_year: float = 0.01
     """NDVI per year. A recent trend below this is treated as flat."""
+
+    deseasonalise: bool = True
+    """Remove the within-year cycle from the post-event series before fitting.
+
+    A cleared site carries a seasonal cycle that intact woodland does not: what
+    grows back first is grass, and grass greens and cures every year. Measured
+    against woodland the anomaly then swings by more than half an NBR unit
+    between quarters, which swamps the recovery trend and makes every dry
+    quarter look like a second clearing. Subtracting the per-quarter mean
+    leaves the trend and hands the amplitude to
+    :attr:`cultivated_amplitude`, where it is more useful anyway."""
+
+    cultivated_amplitude: float = 0.30
+    """Within-year swing, in index units, above which a site is called
+    cultivated rather than regrowing.
+
+    Woody regrowth is largely evergreen in these landscapes and moves little
+    through the year. A cleared paddock that has gone into crop swings hard
+    every season, and its long-run trend goes nowhere. Distinguishing the two
+    is the question a clearing follow-up actually has to answer: the site is
+    either coming back or it is in production, and a recovery fraction alone
+    cannot tell you which."""
 
     recent_years: float = 2.0
     """Length of the trailing window used for the recent-trend estimate."""

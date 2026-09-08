@@ -85,6 +85,7 @@ CLASS_COLOURS: Dict[str, str] = {
     "recovering": STATUS["warning"],
     "stalled": STATUS["serious"],
     "recleared": STATUS["critical"],
+    "cultivated": "#8a6d3b",
     "insufficient_data": INK_MUTED,
 }
 

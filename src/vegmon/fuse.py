@@ -36,8 +36,7 @@ TIER_NAMES = {
 
 TIER_DESCRIPTIONS = {
     "confirmed": (
-        "Both sensors agree: the canopy went and the structure went with it. "
-        "This is the tier to act on."
+        "Both lines of evidence agree. This is the tier to act on."
     ),
     "s2_only": (
         "Spectral loss with no matching structural loss. Typically fire, "
@@ -47,7 +46,8 @@ TIER_DESCRIPTIONS = {
     "s1_only": (
         "Structural loss with no matching spectral loss. Often thinning or "
         "selective removal under retained canopy, an inundated surface, or a "
-        "gap in cloud-free optical coverage. Review."
+        "gap in cloud-free optical coverage. Review. Empty by construction "
+        "when the confirming evidence is corroborating rather than independent."
     ),
 }
 
@@ -65,6 +65,13 @@ class ClearingMap:
 
     records: List[dict] = field(default_factory=list)
     detection_config: Optional[DetectionConfig] = None
+    confirming_source: str = "Sentinel-1 structural change"
+    """What supplied the second opinion. Normally Sentinel-1; where no radar is
+    reachable this says so, because "confirmed" means something weaker then."""
+
+    confirming_description: str = (
+        "the canopy went and the woody structure went with it"
+    )
 
     def __len__(self) -> int:
         return len(self.records)
@@ -83,6 +90,8 @@ class ClearingMap:
             tier=np.where(components > 0, self.tier, TIER_NONE).astype(np.uint8),
             records=[r for r in self.records if r["patch_id"] in keep],
             detection_config=self.detection_config,
+            confirming_source=self.confirming_source,
+            confirming_description=self.confirming_description,
         )
 
     def mask(self, *tiers: str) -> np.ndarray:
@@ -197,7 +206,7 @@ def sieve(mask: np.ndarray, min_pixels: int) -> np.ndarray:
 
 def fuse(
     optical: OpticalChange,
-    radar: RadarChange,
+    radar,
     config: Optional[DetectionConfig] = None,
 ) -> ClearingMap:
     """Combine the two detectors into tiered, sieved, attributed patches.
@@ -210,7 +219,31 @@ def fuse(
     config = config or DetectionConfig()
     grid = optical.grid
 
-    union = optical.mask | radar.mask
+    # The confirming evidence is either a Sentinel-1 change layer or, where no
+    # radar is reachable, a temporal-persistence layer. Both expose a mask and
+    # a dict of per-pixel statistics, and nothing below needs to know which.
+    if isinstance(radar, RadarChange):
+        confirming_stats = {
+            "mean_vh_drop_db": radar.vh_drop_db,
+            "max_vh_drop_db": radar.vh_drop_db,
+            "mean_vv_drop_db": radar.vv_drop_db,
+            "pre_vh_db": radar.pre.vh_db,
+            "post_vh_db": radar.post.vh_db,
+        }
+        confirming_source = "Sentinel-1 structural change"
+        confirming_description = "the canopy went and the woody structure went with it"
+    else:
+        confirming_stats = radar.as_stats()
+        confirming_source = getattr(radar, "source_name", "second evidence layer")
+        confirming_description = getattr(radar, "source_description", "")
+
+    # An independent sensor can detect clearing the optical detector missed, so
+    # its detections join the union. Corroborating evidence cannot: it only
+    # ever answers a question about a pixel the optical detector already
+    # flagged, so letting it contribute its own patches would invent
+    # detections out of a test that was never run on that ground.
+    independent = getattr(radar, "is_independent", True)
+    union = (optical.mask | radar.mask) if independent else optical.mask
     cleaned = clean_mask(union, grid, config)
 
     components, n_components = ndimage.label(cleaned)
@@ -219,7 +252,10 @@ def fuse(
     records: List[dict] = []
 
     if n_components == 0:
-        return ClearingMap(grid, components, tier_raster, records, config)
+        return ClearingMap(
+            grid, components, tier_raster, records, config,
+            confirming_source, confirming_description,
+        )
 
     xs, ys = grid.xy_centres()
     x_grid, y_grid = np.meshgrid(xs, ys)
@@ -252,17 +288,16 @@ def fuse(
                 "mean_dnbr": _stat(optical.dnbr, patch),
                 "max_dnbr": _stat(optical.dnbr, patch, np.nanmax),
                 "mean_dndvi": _stat(optical.dndvi, patch),
-                "mean_vh_drop_db": _stat(radar.vh_drop_db, patch),
-                "max_vh_drop_db": _stat(radar.vh_drop_db, patch, np.nanmax),
-                "mean_vv_drop_db": _stat(radar.vv_drop_db, patch),
                 "pre_ndvi": _stat(optical.pre.ndvi, patch),
                 "pre_nbr": _stat(optical.pre.nbr, patch),
                 "pre_ndvi_persistent": _stat(optical.pre_ndvi_persistent, patch),
                 "post_ndvi": _stat(optical.post.ndvi, patch),
-                "pre_vh_db": _stat(radar.pre.vh_db, patch),
-                "post_vh_db": _stat(radar.post.vh_db, patch),
                 "centroid_x": round(float(x_grid[patch].mean()), 1),
                 "centroid_y": round(float(y_grid[patch].mean()), 1),
+                **{
+                    name: _stat(layer, patch, np.nanmax if name.startswith("max_") else np.nanmean)
+                    for name, layer in confirming_stats.items()
+                },
             }
         )
 
@@ -272,6 +307,8 @@ def fuse(
         tier=tier_raster,
         records=records,
         detection_config=config,
+        confirming_source=confirming_source,
+        confirming_description=confirming_description,
     )
 
 

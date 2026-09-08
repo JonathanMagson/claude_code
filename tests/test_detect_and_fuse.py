@@ -80,7 +80,8 @@ def test_optical_gate_names_are_stable_and_all_report(scene, config):
     change = detect_optical(scene.optical, config.periods, config.detection)
     assert set(change.gates) == {
         "observations_pre", "observations_post", "woody_before",
-        "persistently_woody", "not_water", "nbr_drop", "ndvi_drop",
+        "persistently_woody", "not_water", "steady_through_the_year",
+        "nbr_drop", "ndvi_drop",
     }
     assert set(change.rejection_summary()) == set(change.gates)
 
@@ -96,6 +97,37 @@ def test_persistence_gate_is_what_stops_the_fallow_paddock(scene, truth, config)
                                     if p["kind"] == "crop_fallow"])
     assert float(strict.mask[fallow].mean()) < 0.02
     assert float(relaxed.mask[fallow].mean()) > float(strict.mask[fallow].mean())
+
+
+def test_amplitude_gate_rejects_a_pixel_that_swings_through_the_year(scene, truth, config):
+    """Persistent greenness is not a woody test - irrigated cropping passes it.
+
+    What separates woody vegetation from any crop is the shape of the year:
+    woodland barely moves, a crop swings between planting and harvest.
+    """
+    from dataclasses import replace
+
+    strict = detect_optical(
+        scene.optical,
+        config.periods,
+        replace(config.detection, max_pre_seasonal_amplitude=0.35),
+    )
+    assert "steady_through_the_year" in strict.gates
+    assert strict.pre_amplitude is not None
+    # The cleared patches were woodland before the event, so they must survive
+    # the gate; the cropping paddocks must not.
+    assert float(strict.gates["steady_through_the_year"][truth.clearing_mask].mean()) > 0.8
+    crop = truth.crop_mask
+    assert float(strict.gates["steady_through_the_year"][crop].mean()) < float(
+        strict.gates["steady_through_the_year"][truth.clearing_mask].mean()
+    )
+    assert float(strict.mask[truth.clearing_mask].mean()) > 0.80
+
+
+def test_amplitude_gate_is_off_by_default(scene, config):
+    change = detect_optical(scene.optical, config.periods, config.detection)
+    assert change.pre_amplitude is None
+    assert bool(change.gates["steady_through_the_year"].all())
 
 
 def test_optical_detector_warns_on_misaligned_phenology(scene, config):

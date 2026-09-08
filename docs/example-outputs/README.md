@@ -17,7 +17,7 @@ vegmon demo --outputs docs/example-outputs
 | `regrowth.csv` | Every recovery metric for every patch. |
 | `summary.json` | The whole run, machine-readable, including the validation report. |
 
-Headline result on this scene: 84.2 ha confirmed across 9 patches against
-84.9 ha of reference clearing (-0.8% area bias), 99.5% precision and 98.7%
+Headline result on this scene: 84.0 ha confirmed across 9 patches against
+84.9 ha of reference clearing (-1.1% area bias), 99.5% precision and 98.5%
 recall at the pixel level, no look-alike class reaching the confirmed tier,
 and Sentinel-1 raising the alert a median 13 days ahead of Sentinel-2.

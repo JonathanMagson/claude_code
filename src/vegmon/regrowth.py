@@ -39,6 +39,7 @@ CLASS_RECOVERED = "recovered"
 CLASS_RECOVERING = "recovering"
 CLASS_STALLED = "stalled"
 CLASS_RECLEARED = "recleared"
+CLASS_CULTIVATED = "cultivated"
 CLASS_UNKNOWN = "insufficient_data"
 
 CLASS_DESCRIPTIONS = {
@@ -48,6 +49,10 @@ CLASS_DESCRIPTIONS = {
     "the site is being held open, by grazing, repeat cultivation or drought.",
     CLASS_RECLEARED: "Recovered part-way, then dropped again: a second "
     "clearing or disturbance event on the same ground.",
+    CLASS_CULTIVATED: "Swinging hard with the seasons and trending nowhere - "
+    "the site is in production, not regrowing. Cropping and woody regrowth "
+    "reach similar annual-average greenness; only the size of the within-year "
+    "swing separates them.",
     CLASS_UNKNOWN: "Too few clear observations after the event to fit a trajectory.",
 }
 
@@ -59,6 +64,47 @@ class SeasonalSeries:
     dates: List[date]
     values: np.ndarray
     counts: np.ndarray
+
+    def seasonal_amplitude(self, since: date) -> Optional[float]:
+        """Median within-year peak-to-trough swing after ``since``.
+
+        The cultivation signal: crop swings, woody regrowth does not.
+        """
+        by_year: Dict[int, List[float]] = {}
+        for when, value in zip(self.dates, self.values):
+            if when >= since and np.isfinite(value):
+                by_year.setdefault(when.year, []).append(float(value))
+        swings = [max(v) - min(v) for v in by_year.values() if len(v) >= 3]
+        return float(np.median(swings)) if swings else None
+
+    def deseasonalised(self, since: date, bins_per_year: int) -> "SeasonalSeries":
+        """Subtract the per-phase mean computed over seasons at or after ``since``.
+
+        Phase is the position within the year, so this removes the repeating
+        annual cycle while leaving the trend and any step change intact.
+        """
+        if bins_per_year <= 1:
+            return self
+        phases: Dict[int, List[float]] = {}
+        for when, value in zip(self.dates, self.values):
+            if when >= since and np.isfinite(value):
+                phases.setdefault(self._phase(when, bins_per_year), []).append(float(value))
+        offsets = {k: float(np.mean(v)) for k, v in phases.items() if len(v) >= 2}
+        if len(offsets) < bins_per_year:
+            return self
+        grand = float(np.mean(list(offsets.values())))
+        adjusted = np.array(
+            [
+                value - offsets.get(self._phase(when, bins_per_year), grand) + grand
+                for when, value in zip(self.dates, self.values)
+            ],
+            dtype=np.float32,
+        )
+        return SeasonalSeries(dates=list(self.dates), values=adjusted, counts=self.counts)
+
+    @staticmethod
+    def _phase(when: date, bins_per_year: int) -> int:
+        return ((when.month - 1) * bins_per_year) // 12
 
     def before(self, when: date) -> np.ndarray:
         return self.values[np.array([d < when for d in self.dates], dtype=bool)]
@@ -104,6 +150,9 @@ class RecoveryFit:
     years_to_80pct: Optional[float] = None
     recent_slope_per_year: Optional[float] = None
     rmse: Optional[float] = None
+    seasonal_amplitude: Optional[float] = None
+    """Median within-year swing after the event - the cultivation indicator."""
+
     n_seasons: int = 0
     converged: bool = False
     at_bound: bool = False
@@ -174,6 +223,7 @@ class RegrowthResult:
             CLASS_RECOVERING,
             CLASS_STALLED,
             CLASS_RECLEARED,
+            CLASS_CULTIVATED,
             CLASS_UNKNOWN,
         ):
             selected = [p for p in self.patches if p.classification == name]
@@ -195,6 +245,26 @@ class RegrowthResult:
 # ---------------------------------------------------------------------------
 # series extraction
 # ---------------------------------------------------------------------------
+
+
+def reference_series(
+    stack: np.ndarray,
+    reference: np.ndarray,
+) -> np.ndarray:
+    """Median of each time slice over a reference population.
+
+    This is the landscape's own signal: rainfall, phenology, sensor drift -
+    everything that moves every pixel in the scene at once.
+    """
+    if not reference.any():
+        return np.zeros(stack.shape[0], dtype=np.float32)
+    sample = stack[:, reference]
+    all_nan = np.all(~np.isfinite(sample), axis=1)
+    safe = np.where(np.isfinite(sample), sample, np.nan)
+    safe = np.where(all_nan[:, None], 0.0, safe)
+    with np.errstate(invalid="ignore"):
+        out = np.nanmedian(safe, axis=1).astype(np.float32)
+    return np.where(all_nan, 0.0, out)
 
 
 def patch_means(
@@ -322,6 +392,10 @@ def fit_recovery(
         if fit.baseline > 1e-6
         else None
     )
+    # An anomaly baseline near zero, or a decibel baseline below it, makes the
+    # ratio explode or invert. Either way it is not a number to report.
+    if fit.r80p is not None and (fit.baseline < 0.05 or abs(fit.r80p) > 20):
+        fit.r80p = None
 
     for age, attr in ((1.0, "recovery_at_1yr"), (2.0, "recovery_at_2yr"), (5.0, "recovery_at_5yr")):
         if span > 1e-6 and years.size and years.max() >= age:
@@ -385,6 +459,7 @@ def detect_reclearing(
     series: SeasonalSeries,
     event_date: date,
     config: RegrowthConfig,
+    seasonal_amplitude: Optional[float] = None,
 ) -> Optional[date]:
     """Find a second disturbance: a sustained drop below the recent level.
 
@@ -398,11 +473,20 @@ def detect_reclearing(
     The gate on how much the site had recovered first also matters: without
     it, a site that never recovered at all reads as re-cleared every time the
     season turns.
+
+    ``seasonal_amplitude`` raises the bar to the site's own normal swing. A
+    drop has to be larger than what this particular site does every year
+    anyway before it can be called an event, which is what stops a grassy or
+    cropped site from reporting a fresh clearing annually.
     """
     dates, years, values = series.since_with_dates(event_date)
     if values.size < 6:
         return None
     trough = float(np.min(values[years <= 1.0])) if np.any(years <= 1.0) else float(values[0])
+
+    required = config.reclear_drop
+    if seasonal_amplitude is not None:
+        required = max(required, 0.8 * seasonal_amplitude)
 
     lookback = 4
     for i in range(lookback, values.size - 1):
@@ -411,7 +495,7 @@ def detect_reclearing(
             continue
         drop = reference - values[i]
         sustained = reference - values[i + 1]
-        if drop >= config.reclear_drop and sustained >= config.reclear_drop * 0.7:
+        if drop >= required and sustained >= required * 0.7:
             return dates[i] if i < len(dates) else None
     return None
 
@@ -422,10 +506,21 @@ def classify(
     config: RegrowthConfig,
 ) -> str:
     """Turn recovery metrics into a class a report can use."""
-    if reclear_date is not None:
-        return CLASS_RECLEARED
     if fit is None or fit.recovery_fraction is None:
         return CLASS_UNKNOWN
+    # Cultivation is tested first, ahead of both re-clearing and recovery. A
+    # site that swings half an index unit every year is a paddock in
+    # production; each of those swings would otherwise be read as a fresh
+    # disturbance, and its annual average would otherwise be read as woody
+    # cover returning. Both are wrong, and "it is being cropped" is the more
+    # useful answer to the question that prompted the follow-up.
+    if (
+        fit.seasonal_amplitude is not None
+        and fit.seasonal_amplitude >= config.cultivated_amplitude
+    ):
+        return CLASS_CULTIVATED
+    if reclear_date is not None:
+        return CLASS_RECLEARED
     if fit.recovery_fraction >= config.recovered_fraction:
         return CLASS_RECOVERED
     slope = fit.recent_slope_per_year
@@ -449,12 +544,24 @@ def analyse_regrowth(
     config: Optional[RegrowthConfig] = None,
     event_dates: Optional[Dict[int, date]] = None,
     tiers: Sequence[str] = ("confirmed",),
+    reference_mask: Optional[np.ndarray] = None,
 ) -> RegrowthResult:
     """Fit recovery trajectories for every patch in the requested tiers.
 
     ``event_dates`` maps patch id to a clearing date; where a patch is missing
     the midpoint of the pre/post gap is used, which is the best that can be
     said from a bitemporal pair alone.
+
+    ``reference_mask`` selects undisturbed ground to measure recovery
+    *against*. When given, every patch series is expressed as an anomaly from
+    the median of that population on the same date, which removes the shared
+    landscape signal - rainfall above all. It matters more than it sounds. Raw
+    NBR over inland NSW swings further between a wet year and a dry one than
+    a clearing event moves it, so on real data an unnormalised trajectory
+    reports every drought as a second clearing and every wet year as recovery.
+    Working in anomaly space also matches how the answer is used: the question
+    is whether a site is coming back relative to the country around it, not
+    whether it happened to be green the year someone looked.
     """
     config = config or RegrowthConfig()
     records = [r for r in clearing.records if not tiers or r["tier"] in tiers]
@@ -466,16 +573,31 @@ def analyse_regrowth(
     default_event = gap_start + timedelta(days=(gap_end - gap_start).days // 2)
 
     window = optical.select(periods.series_start, periods.series_end)
+    if reference_mask is None:
+        reference_mask = clearing.components == 0
+    reference_mask = np.asarray(reference_mask, dtype=bool)
+
     tracks: Dict[str, Dict[int, np.ndarray]] = {}
+    baselines: Dict[str, np.ndarray] = {}
     for index_name in ("ndvi", "nbr"):
         stack = window.index_stack(index_name)
-        tracks[index_name] = patch_means(stack, clearing.components, patch_ids)
+        landscape = reference_series(stack, reference_mask)
+        baselines[index_name] = landscape
+        means = patch_means(stack, clearing.components, patch_ids)
+        tracks[index_name] = {
+            pid: (values - landscape).astype(np.float32) for pid, values in means.items()
+        }
         del stack
 
     radar_window = None
     if radar is not None:
         radar_window = radar.select(periods.series_start, periods.series_end)
-        tracks["vh"] = patch_means(radar_window.vh_db, clearing.components, patch_ids)
+        landscape = reference_series(radar_window.vh_db, reference_mask)
+        baselines["vh"] = landscape
+        means = patch_means(radar_window.vh_db, clearing.components, patch_ids)
+        tracks["vh"] = {
+            pid: (values - landscape).astype(np.float32) for pid, values in means.items()
+        }
 
     out: List[PatchRecovery] = []
     for record in records:
@@ -487,15 +609,28 @@ def analyse_regrowth(
             area_ha=record["area_ha"],
             tier=record["tier"],
         )
+        bins_per_year = max(1, 12 // max(1, config.season_months))
         for index_name, means in tracks.items():
             times = radar_window.times if index_name == "vh" else window.times
-            series = seasonalise(times, means[patch_id], config.season_months)
+            raw = seasonalise(times, means[patch_id], config.season_months)
+            amplitude = raw.seasonal_amplitude(event)
+            series = (
+                raw.deseasonalised(event, bins_per_year) if config.deseasonalise else raw
+            )
             recovery.series[index_name] = series
-            recovery.fits[index_name] = fit_recovery(series, event, config, index_name)
+            fit = fit_recovery(series, event, config, index_name)
+            fit.seasonal_amplitude = amplitude
+            recovery.fits[index_name] = fit
 
         nbr_series = recovery.series.get("nbr")
+        nbr_fit = recovery.fits.get("nbr")
         recovery.reclear_date = (
-            detect_reclearing(nbr_series, event, config) if nbr_series else None
+            detect_reclearing(
+                nbr_series, event, config,
+                seasonal_amplitude=nbr_fit.seasonal_amplitude if nbr_fit else None,
+            )
+            if nbr_series
+            else None
         )
         recovery.classification = classify(recovery.primary, recovery.reclear_date, config)
         out.append(recovery)
@@ -504,6 +639,7 @@ def analyse_regrowth(
 
 
 __all__ = [
+    "CLASS_CULTIVATED",
     "CLASS_DESCRIPTIONS",
     "CLASS_RECLEARED",
     "CLASS_RECOVERED",

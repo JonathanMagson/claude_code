@@ -34,11 +34,11 @@ ground truth:
 
 | Detector | Precision | Recall |
 |---|---|---|
-| Sentinel-2 alone | 77.4% | 98.9% |
+| Sentinel-2 alone | 78.9% | 96.7% |
 | Sentinel-1 alone | 99.5% | 96.1% |
-| **Both, where they agree** | **99.5%** | **98.7%** |
+| **Both, where they agree** | **99.5%** | **98.5%** |
 
-Sentinel-2 alone loses a quarter of its precision to a 25 ha fire scar it
+Sentinel-2 alone loses a fifth of its precision to a 25 ha fire scar it
 scores as clearing. Requiring the two sensors to agree removes it entirely,
 and the fire scar is not discarded — it is reported in an `s2_only` tier for
 review, which is a more useful answer than either "clearing" or silence.
@@ -66,9 +66,14 @@ browser to see what the pipeline produces without running anything.
 
 ### 1. Composite
 
-Seasonal median composites either side of the suspected event, built from
+Seasonal composites either side of the suspected event, built from
 cloud-masked Sentinel-2 (Sen2Cor SCL, with cloud and shadow dilated outwards,
 because SCL consistently under-calls both) and multi-looked Sentinel-1.
+
+The optical reducer is a **medoid**, not a band-wise median: it picks, per
+pixel, the single real observation closest to the per-band median vector, so
+every composite pixel is an internally consistent spectrum rather than one
+assembled from different dates.
 
 **The pre- and post-period must cover the same months.** Comparing a
 March–August composite against a March–November one is the most reliable way
@@ -91,14 +96,28 @@ that have to be re-tuned for every one.
 ### 3. Detect
 
 **Sentinel-2** gates, in order: enough clear observations either side → was
-woody (median NDVI and NBR above a floor) → *persistently* woody (the 10th
-percentile of pre-event NDVI also above a floor) → lost enough (dNBR **and**
+woody (temporal median NDVI and NBR above a floor) → *persistently* woody (the
+10th percentile of pre-event NDVI also above a floor) → **steady through the
+year** (within-year NDVI swing below a ceiling) → lost enough (dNBR **and**
 dNDVI past threshold).
+
+The gates read *temporal percentiles of the index*, never the index of a band
+composite. Any band-wise composite reduces each band independently, so over a
+pixel that swings through the year the composite NDVI can sit far above
+anything the pixel actually reached — on a real NSW cropping scene, 0.42
+against a true temporal median of 0.20.
 
 That third gate does most of the work in cropping country. A winter-crop
 paddock reaches NDVI 0.7 in September and drops below 0.25 after harvest, so
 its seasonal *median* can pass a woody threshold — its low percentile cannot.
 Woody vegetation stays green all year, so it does.
+
+The fourth gate is what persistence alone cannot do. Irrigated cotton holds
+NDVI above 0.6 for most of the year and clears any persistence test
+comfortably, and a paddock going from cotton to fallow produces a dNBR
+indistinguishable from clearing. What separates woody vegetation from any crop
+is the *shape* of the year: woody vegetation here is largely evergreen and
+moves little, while a crop swings hard between planting and harvest.
 
 Requiring NBR and NDVI to move *together* is also deliberate. NBR alone fires
 on wet soil; NDVI alone fires on every harvested paddock.
@@ -158,10 +177,23 @@ Per patch, three tracks, quarterly medians, saturating-exponential fits:
 Reporting all three rather than picking one is the point. **A patch whose NDVI
 has recovered but whose NBR and VH have not is grassland, not regrowth.**
 
+Trajectories are expressed as **anomalies against undisturbed woody ground in
+the same scene**, and the within-year cycle is subtracted before fitting.
+Both matter on real data: raw NBR over inland NSW swings further between a wet
+year and a dry one than a clearing event moves it, so an unnormalised
+trajectory reports every drought as a second clearing.
+
 Metrics per track: recovery fraction, R80P, fitted time constant and
 half-life, extrapolated years to 80% of baseline, observed recovery fraction
-at 1/2/5 years, and a Theil–Sen recent trend. Patches are classified
-`recovered` / `recovering` / `stalled` / `recleared`.
+at 1/2/5 years, a Theil–Sen recent trend, and the median within-year swing.
+Patches are classified `recovered` / `recovering` / `stalled` / `recleared` /
+`cultivated`.
+
+That last class carries a lot of weight. Cropping and returning woody cover
+reach similar annual-average greenness, so a recovery fraction alone cannot
+tell them apart — only the size of the within-year swing can. A cleared site
+that went into production is not regrowing, and on real data it is the most
+common outcome.
 
 Re-clearing is a sustained drop below a *trailing median* of the preceding
 seasons — not below a running maximum, which drifts upwards on a noisy series
@@ -177,12 +209,39 @@ latency** per sensor.
 
 ## Using it on real data
 
+Two routes. The first needs a reachable STAC API:
+
 ```bash
 vegmon catalogues                       # what's available
 vegmon config-template my-aoi.json      # starter config
 $EDITOR my-aoi.json                     # set the bbox, CRS and periods
 vegmon run --config my-aoi.json --orbit ascending
 ```
+
+The second needs nothing but the AWS data bucket, which is often the only one
+reachable from a government or corporate network:
+
+```bash
+vegmon aws --tile 55JGG --lon 150.1325 --lat -30.0634 \
+  --size 512 --resolution 20 \
+  --pre 2022-03-01 2022-09-30 --post 2023-03-01 2023-09-30 \
+  --series 2019-01-01 2025-12-31 --epochs
+```
+
+`vegmon aws` enumerates Sentinel-2 scenes by listing S3 prefixes and reads
+windowed COGs directly, so it works when `earth-search`, Planetary Computer
+and CDSE are all blocked. `--epochs` additionally scans every consecutive year
+pair in the record and writes the annual monitoring table.
+
+**A real NSW run, and everything that broke doing it, is written up in
+[`docs/nsw-real-data.md`](docs/nsw-real-data.md)** — worth reading before
+pointing this at your own AOI. Outputs are in
+[`docs/example-outputs-nsw/`](docs/example-outputs-nsw/). The short version:
+the detection machinery transferred unchanged, but absolute thresholds do not
+survive an Australian drought, band-wise median compositing manufactures
+spectra that walk cropping through a woody-cover gate, and persistent
+greenness is not a test for woody vegetation — irrigated cotton passes it and
+produced 80 ha of confidently-reported "clearing" that was paddock rotation.
 
 | Catalogue | Sentinel-2 | Sentinel-1 | Notes |
 |---|---|---|---|
@@ -252,6 +311,8 @@ src/vegmon/
   series.py      optical and radar time-series containers
   synthetic.py   the synthetic datacube and its ground truth
   stac.py        live loaders (earth-search, Planetary Computer, CDSE)
+  s3direct.py    Sentinel-2 straight from the AWS bucket, no STAC API needed
+  persistence.py temporal persistence as confirming evidence without radar
   detect.py      the two detectors, normalisation, event dating
   fuse.py        cleanup, sieve, tiering, polygonisation
   regrowth.py    seasonal binning, curve fitting, classification
