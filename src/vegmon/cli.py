@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import date
 from pathlib import Path
 from typing import Optional, Sequence
 
@@ -151,6 +152,30 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     _add_common(aws)
+
+    look = subparsers.add_parser(
+        "survey",
+        help=(
+            "characterise an AOI before detecting anything in it: how green it is, "
+            "how hard it swings, how much is woody, and which year pairs are fair"
+        ),
+    )
+    look.add_argument("--tile", required=True, help="MGRS tile id, e.g. 55JGG")
+    look.add_argument("--lon", type=float, required=True)
+    look.add_argument("--lat", type=float, required=True)
+    look.add_argument("--name", default=None)
+    look.add_argument("--size", type=int, default=256,
+                      help="probe size in pixels; smaller is faster and usually enough")
+    look.add_argument("--resolution", type=float, default=20.0)
+    look.add_argument("--years", nargs=2, type=int, metavar=("FIRST", "LAST"),
+                      required=True, help="inclusive range of calendar years to characterise")
+    look.add_argument("--max-cloud", type=float, default=0.45)
+    look.add_argument("--workers", type=int, default=12)
+    look.add_argument("--outputs", type=Path, default=None,
+                      help="directory to write survey.json and survey.csv into")
+    look.add_argument("--cache", type=Path, default=None,
+                      help="reuse (or create) a cached series for this AOI")
+    look.add_argument("--quiet", action="store_true")
 
     subparsers.add_parser("catalogues", help="list the available STAC catalogues")
 
@@ -523,6 +548,54 @@ def _cache_optical(scene, path) -> None:
     save_scene(Scene(optical=scene.optical, radar=empty, grid=grid), path)
 
 
+def command_survey(args) -> int:
+    from dataclasses import replace
+
+    from vegmon.config import DetectionConfig
+    from vegmon.s3direct import SceneListingError, grid_for_aoi, load_sentinel2
+    from vegmon.survey import format_survey, survey
+
+    first, last = args.years
+    grid = grid_for_aoi(args.tile, (args.lon, args.lat), args.size, args.resolution)
+    detection = replace(DetectionConfig(), max_cloud_cover=args.max_cloud)
+    name = args.name or f"{args.tile} @ {args.lat:.4f},{args.lon:.4f}"
+
+    if not args.quiet:
+        area = grid.width * grid.height * grid.pixel_area_ha
+        print(f"Characterising {name}: {area:,.0f} ha, {first}-{last}")
+
+    cache = args.cache
+    if cache and Path(cache).exists():
+        from vegmon.synthetic import load_scene as load_cached
+
+        if not args.quiet:
+            print(f"  using cached series {cache}")
+        optical = load_cached(cache).optical
+    else:
+        try:
+            optical = load_sentinel2(
+                args.tile, grid, date(first, 1, 1), date(last, 12, 31),
+                detection, workers=args.workers, progress=not args.quiet,
+            )
+        except SceneListingError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+
+    result = survey(optical, name, grid, list(range(first, last + 1)), detection)
+    print()
+    print(format_survey(result))
+
+    if args.outputs:
+        outputs = Path(args.outputs)
+        outputs.mkdir(parents=True, exist_ok=True)
+        (outputs / "survey.json").write_text(json.dumps(result.as_dict(), indent=2))
+        _write_csv(outputs / "survey.csv", [y.as_dict() for y in result.years])
+        _write_csv(outputs / "survey-pairs.csv", [p.as_dict() for p in result.pairs])
+        if not args.quiet:
+            print(f"\nWrote {outputs / 'survey.json'}, survey.csv and survey-pairs.csv")
+    return 0
+
+
 def command_catalogues(args) -> int:
     from vegmon.stac import catalogue_report
 
@@ -545,6 +618,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "aws": command_aws,
         "demo": command_demo,
         "run": command_run,
+        "survey": command_survey,
         "catalogues": command_catalogues,
         "config-template": command_config_template,
     }

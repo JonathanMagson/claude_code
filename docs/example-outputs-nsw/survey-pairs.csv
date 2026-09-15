@@ -1,0 +1,7 @@
+baseline,detection,ndvi_gap,min_clear_scenes,comparable,notes
+2019,2020,0.1257,86,False,"the landscape is 0.13 NDVI greener in 2020; that is a climate difference, and it will read as change everywhere"
+2020,2021,0.0332,84,True,comparable
+2021,2022,0.0229,76,True,comparable
+2022,2023,0.0728,76,True,comparable
+2023,2024,0.0492,90,True,comparable
+2024,2025,0.0157,90,True,comparable

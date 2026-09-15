@@ -1,0 +1,25 @@
+Boggabri / Maules Creek woodland margin (55JGG)  -  10,486 ha
+
+year   clear  NDVI p50  NDVI p90  NBR p50  persist   swing   woody   crop  cloud
+2019     111     0.516     0.613    0.176    0.429   0.258   50.2%   0.3%   5.7%
+2020      86     0.642     0.724    0.334    0.525   0.287   67.2%   7.7%   6.8%
+2021      84     0.675     0.743    0.370    0.681   0.140   86.1%   2.6%   8.3%
+2022      76     0.652     0.732    0.331    0.585   0.262   67.7%   2.2%   9.5%
+2023      98     0.579     0.678    0.241    0.558   0.236   68.4%   1.8%   4.6%
+2024      90     0.628     0.701    0.288    0.619   0.182   83.5%   5.1%   5.6%
+2025      98     0.644     0.712    0.326    0.608   0.213   74.8%   7.2%   7.4%
+
+epoch pairs:
+  AVOID 2019->2020  NDVI gap 0.126  -  the landscape is 0.13 NDVI greener in 2020; that is a climate difference, and it will read as change everywhere
+  ok   2020->2021  NDVI gap 0.033  -  comparable
+  ok   2021->2022  NDVI gap 0.023  -  comparable
+  ok   2022->2023  NDVI gap 0.073  -  comparable
+  ok   2023->2024  NDVI gap 0.049  -  comparable
+  ok   2024->2025  NDVI gap 0.016  -  comparable
+
+suggested epoch: 2024 -> 2025
+suggested starting thresholds (calibrate before trusting):
+  min_pre_ndvi_persistent        0.585
+  max_pre_seasonal_amplitude     0.35
+  adaptive_change_mad            3.0
+  adaptive_vh_mad                5.0

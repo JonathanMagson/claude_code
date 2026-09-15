@@ -32,6 +32,7 @@ vegmon aws --tile 55JGG --lon 150.1325 --lat -30.0634 \
 | `clearing.gpkg` | Patch polygons in EPSG:32755, with area, tier and change magnitudes. |
 | `regrowth.csv` | Recovery metrics per patch. Empty for the fused run, which confirms no patches to follow. |
 | `summary.json` | The whole run, including the thresholds actually applied. |
+| `survey.txt` / `survey.csv` / `survey-pairs.csv` / `survey.json` | The pre-flight AOI characterisation (`vegmon survey`) - per-year greenness, woody fraction, seasonal swing, and which year pairs are fair to compare. Step 2 of the [monitoring workflow](../monitoring-workflow.md). |
 
 ## What it found
 

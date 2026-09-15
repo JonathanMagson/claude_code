@@ -1,0 +1,147 @@
+{
+  "aoi": "Boggabri / Maules Creek woodland margin (55JGG)",
+  "area_ha": 10485.8,
+  "years": [
+    {
+      "year": 2019,
+      "clear_scenes": 111,
+      "ndvi_median": 0.516,
+      "ndvi_p90": 0.6133,
+      "nbr_median": 0.1764,
+      "persistent_ndvi_p85": 0.4293,
+      "amplitude_median": 0.2576,
+      "woody_fraction": 0.5021,
+      "crop_fraction": 0.0032,
+      "mean_cloud": 0.0568
+    },
+    {
+      "year": 2020,
+      "clear_scenes": 86,
+      "ndvi_median": 0.6416,
+      "ndvi_p90": 0.7238,
+      "nbr_median": 0.3343,
+      "persistent_ndvi_p85": 0.5247,
+      "amplitude_median": 0.2875,
+      "woody_fraction": 0.6723,
+      "crop_fraction": 0.0773,
+      "mean_cloud": 0.0676
+    },
+    {
+      "year": 2021,
+      "clear_scenes": 84,
+      "ndvi_median": 0.6748,
+      "ndvi_p90": 0.7432,
+      "nbr_median": 0.3698,
+      "persistent_ndvi_p85": 0.6814,
+      "amplitude_median": 0.1398,
+      "woody_fraction": 0.8608,
+      "crop_fraction": 0.0257,
+      "mean_cloud": 0.0835
+    },
+    {
+      "year": 2022,
+      "clear_scenes": 76,
+      "ndvi_median": 0.6519,
+      "ndvi_p90": 0.7315,
+      "nbr_median": 0.3307,
+      "persistent_ndvi_p85": 0.5852,
+      "amplitude_median": 0.2619,
+      "woody_fraction": 0.6766,
+      "crop_fraction": 0.0225,
+      "mean_cloud": 0.0949
+    },
+    {
+      "year": 2023,
+      "clear_scenes": 98,
+      "ndvi_median": 0.5791,
+      "ndvi_p90": 0.6779,
+      "nbr_median": 0.2409,
+      "persistent_ndvi_p85": 0.5579,
+      "amplitude_median": 0.2361,
+      "woody_fraction": 0.6844,
+      "crop_fraction": 0.0178,
+      "mean_cloud": 0.0458
+    },
+    {
+      "year": 2024,
+      "clear_scenes": 90,
+      "ndvi_median": 0.6282,
+      "ndvi_p90": 0.7007,
+      "nbr_median": 0.2885,
+      "persistent_ndvi_p85": 0.6194,
+      "amplitude_median": 0.1816,
+      "woody_fraction": 0.8354,
+      "crop_fraction": 0.051,
+      "mean_cloud": 0.0562
+    },
+    {
+      "year": 2025,
+      "clear_scenes": 98,
+      "ndvi_median": 0.6439,
+      "ndvi_p90": 0.712,
+      "nbr_median": 0.3259,
+      "persistent_ndvi_p85": 0.6085,
+      "amplitude_median": 0.2133,
+      "woody_fraction": 0.7477,
+      "crop_fraction": 0.0722,
+      "mean_cloud": 0.074
+    }
+  ],
+  "pairs": [
+    {
+      "baseline": 2019,
+      "detection": 2020,
+      "ndvi_gap": 0.1257,
+      "min_clear_scenes": 86,
+      "comparable": false,
+      "notes": "the landscape is 0.13 NDVI greener in 2020; that is a climate difference, and it will read as change everywhere"
+    },
+    {
+      "baseline": 2020,
+      "detection": 2021,
+      "ndvi_gap": 0.0332,
+      "min_clear_scenes": 84,
+      "comparable": true,
+      "notes": "comparable"
+    },
+    {
+      "baseline": 2021,
+      "detection": 2022,
+      "ndvi_gap": 0.0229,
+      "min_clear_scenes": 76,
+      "comparable": true,
+      "notes": "comparable"
+    },
+    {
+      "baseline": 2022,
+      "detection": 2023,
+      "ndvi_gap": 0.0728,
+      "min_clear_scenes": 76,
+      "comparable": true,
+      "notes": "comparable"
+    },
+    {
+      "baseline": 2023,
+      "detection": 2024,
+      "ndvi_gap": 0.0492,
+      "min_clear_scenes": 90,
+      "comparable": true,
+      "notes": "comparable"
+    },
+    {
+      "baseline": 2024,
+      "detection": 2025,
+      "ndvi_gap": 0.0157,
+      "min_clear_scenes": 90,
+      "comparable": true,
+      "notes": "comparable"
+    }
+  ],
+  "warnings": [],
+  "suggested_thresholds": {
+    "min_pre_ndvi_persistent": 0.585,
+    "max_pre_seasonal_amplitude": 0.35,
+    "adaptive_change_mad": 3.0,
+    "adaptive_vh_mad": 5.0
+  }
+}

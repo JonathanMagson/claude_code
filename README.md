@@ -251,6 +251,12 @@ one relative orbit is what makes it sound without terrain correction: both
 acquisitions then see the same ground at the same incidence angle, so the
 terrain-driven part of the backscatter divides out of the difference.
 
+**The operational procedure is
+[`docs/monitoring-workflow.md`](docs/monitoring-workflow.md)** — how to choose
+an area, characterise it before detecting anything, calibrate, run a cycle,
+triage the tiers, and QA the result, with the known failure modes and the
+commands for each step.
+
 **A real NSW run, and everything that broke doing it, is written up in
 [`docs/nsw-real-data.md`](docs/nsw-real-data.md)** — worth reading before
 pointing this at your own AOI. Outputs are in
@@ -340,6 +346,7 @@ src/vegmon/
   stac.py        live loaders (earth-search, Planetary Computer, CDSE)
   s3direct.py    Sentinel-2 straight from the AWS bucket, no STAC API needed
   s1grd.py       Sentinel-1 gamma0 calibrated in-process from raw GRD products
+  survey.py      characterise an AOI, and which year pairs are fair to compare
   persistence.py temporal persistence as confirming evidence without radar
   detect.py      the two detectors, normalisation, event dating
   fuse.py        cleanup, sieve, tiering, polygonisation
