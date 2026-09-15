@@ -233,15 +233,42 @@ windowed COGs directly, so it works when `earth-search`, Planetary Computer
 and CDSE are all blocked. `--epochs` additionally scans every consecutive year
 pair in the record and writes the annual monitoring table.
 
+Add `--s1` and it builds Sentinel-1 too, calibrated in-process from the **raw
+GRD archive** on AWS — the only Sentinel-1 reachable when the analysis-ready
+collections are blocked and the one open RTC bucket covers only the United
+States:
+
+```bash
+vegmon aws --tile 55JGG --lon 150.1325 --lat -30.0634 \
+  --pre 2022-03-01 2022-09-30 --post 2023-03-01 2023-09-30 \
+  --series 2019-01-01 2025-12-31 --s1 --s1-orbit 45 --epochs
+```
+
+Scenes are found from the orbit rather than a search API, `gamma0` comes from
+the product's own calibration and thermal-noise LUTs, and geocoding is a
+windowed GCP warp at native 10 m, power-averaged to the working grid. Pinning
+one relative orbit is what makes it sound without terrain correction: both
+acquisitions then see the same ground at the same incidence angle, so the
+terrain-driven part of the backscatter divides out of the difference.
+
 **A real NSW run, and everything that broke doing it, is written up in
 [`docs/nsw-real-data.md`](docs/nsw-real-data.md)** — worth reading before
 pointing this at your own AOI. Outputs are in
 [`docs/example-outputs-nsw/`](docs/example-outputs-nsw/). The short version:
 the detection machinery transferred unchanged, but absolute thresholds do not
-survive an Australian drought, band-wise median compositing manufactures
-spectra that walk cropping through a woody-cover gate, and persistent
-greenness is not a test for woody vegetation — irrigated cotton passes it and
-produced 80 ha of confidently-reported "clearing" that was paddock rotation.
+survive an Australian drought (on either sensor), band-wise median compositing
+manufactures spectra that walk cropping through a woody-cover gate, and
+persistent greenness is not a test for woody vegetation — irrigated cotton
+passes it and produced 80 ha of confidently-reported "clearing" that was
+paddock rotation.
+
+The fused run over the Boggabri woodland margin returns **zero confirmed
+clearing across 2019–2025**: where Sentinel-2 sees spectral loss, Sentinel-1
+sees a VH drop of a few tenths of a decibel. The woody structure never left.
+That is the fusion working — the large 2022–23 optical signal is drought
+canopy thinning, and the regrowth trajectories agree. A null result cannot
+demonstrate sensitivity, though; that the detector finds real clearing is so
+far only shown against synthetic truth.
 
 | Catalogue | Sentinel-2 | Sentinel-1 | Notes |
 |---|---|---|---|
@@ -312,6 +339,7 @@ src/vegmon/
   synthetic.py   the synthetic datacube and its ground truth
   stac.py        live loaders (earth-search, Planetary Computer, CDSE)
   s3direct.py    Sentinel-2 straight from the AWS bucket, no STAC API needed
+  s1grd.py       Sentinel-1 gamma0 calibrated in-process from raw GRD products
   persistence.py temporal persistence as confirming evidence without radar
   detect.py      the two detectors, normalisation, event dating
   fuse.py        cleanup, sieve, tiering, polygonisation

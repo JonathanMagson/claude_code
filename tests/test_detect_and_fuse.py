@@ -280,3 +280,47 @@ def test_event_timing_skips_patches_with_no_pixels(scene, config):
     assert estimate_event_timing(
         scene.optical, scene.radar, labels, [42], config.periods, config.detection
     ) == []
+
+
+def test_adaptive_vh_threshold_tightens_on_a_heavy_tailed_scene():
+    """A fixed decibel drop does not transfer between scenes.
+
+    Measured over real NSW Sentinel-1, the VH change distribution has a MAD of
+    0.43 dB but a 99th percentile of 2.7 dB. A fixed 2 dB threshold - a
+    perfectly defensible number in the literature - selects 4.6% of the scene
+    there. The adaptive form follows the tail instead.
+    """
+    from dataclasses import replace
+
+    from vegmon.detect import _resolve_vh_threshold
+
+    rng = np.random.default_rng(0)
+    # Laplace with scale 0.62 reproduces the measured MAD of 0.43 dB and the
+    # heavy tail that speckle and soil moisture give a real scene.
+    drop = rng.laplace(0.0, 0.62, 200_000).astype(np.float32)
+    population = np.ones(drop.shape, bool)
+    assert float(np.median(np.abs(drop - np.median(drop)))) == pytest.approx(0.43, abs=0.03)
+
+    fixed = _resolve_vh_threshold(DetectionConfig(), drop, population)
+    adaptive = _resolve_vh_threshold(
+        replace(DetectionConfig(), adaptive_vh_mad=5.0), drop, population
+    )
+    assert fixed == pytest.approx(2.0)
+    assert adaptive > fixed
+    assert float((drop > adaptive).mean()) < float((drop > fixed).mean()) / 3
+
+
+def test_adaptive_vh_threshold_is_off_by_default(scene, config):
+    change = detect_radar(scene.radar, config.periods, config.detection)
+    assert change.thresholds["vh_drop_db"] == pytest.approx(config.detection.vh_drop_db)
+
+
+def test_adaptive_vh_threshold_never_drops_below_the_floor():
+    from dataclasses import replace
+
+    from vegmon.detect import _resolve_vh_threshold
+
+    quiet = np.full(100_000, 0.0, np.float32) + np.random.default_rng(1).normal(0, 0.001, 100_000)
+    config = replace(DetectionConfig(), adaptive_vh_mad=5.0)
+    resolved = _resolve_vh_threshold(config, quiet.astype(np.float32), np.ones(quiet.shape, bool))
+    assert resolved >= config.adaptive_change_floor * config.vh_drop_db

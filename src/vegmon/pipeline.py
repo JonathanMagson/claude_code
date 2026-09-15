@@ -58,7 +58,10 @@ class PipelineResult:
                 ],
             },
             "normalisation_offsets": {**self.optical.offsets, **self.radar.offsets},
-            "resolved_thresholds": self.optical.thresholds,
+            "resolved_thresholds": {
+                **self.optical.thresholds,
+                **getattr(self.radar, "thresholds", {}),
+            },
             "confirming_source": self.clearing.confirming_source,
             "tiers": self.clearing.summary(),
             "recovery": self.regrowth.summary(),

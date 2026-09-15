@@ -115,6 +115,7 @@ class RadarChange:
     mask: np.ndarray
     gates: Dict[str, np.ndarray] = field(default_factory=dict)
     offsets: Dict[str, float] = field(default_factory=dict)
+    thresholds: Dict[str, float] = field(default_factory=dict)
     orbit_drops: Dict[str, np.ndarray] = field(default_factory=dict)
 
     @property
@@ -410,11 +411,18 @@ def detect_radar(
                 drop - robust_offset(drop, stable_population, config.vh_drop_db)
             ).astype(np.float32)
 
+    had_structure = pre.vh_db >= config.min_pre_vh_db
+    enough = (pre.n_obs >= config.min_s1_observations) & (
+        post.n_obs >= config.min_s1_observations
+    )
+    vh_threshold = _resolve_vh_threshold(
+        config, vh_drop, enough & had_structure & np.isfinite(vh_drop)
+    )
     gates = {
         "observations_pre": pre.n_obs >= config.min_s1_observations,
         "observations_post": post.n_obs >= config.min_s1_observations,
-        "structure_before": pre.vh_db >= config.min_pre_vh_db,
-        "vh_drop": vh_drop >= config.vh_drop_db,
+        "structure_before": had_structure,
+        "vh_drop": vh_drop >= vh_threshold,
     }
     mask = np.ones(series.grid.shape, dtype=bool)
     for gate in gates.values():
@@ -430,8 +438,28 @@ def detect_radar(
         mask=mask,
         gates=gates,
         offsets={"vh_db": vh_offset, "vv_db": vv_offset},
+        thresholds={"vh_drop_db": vh_threshold},
         orbit_drops=orbit_drops,
     )
+
+
+def _resolve_vh_threshold(
+    config: DetectionConfig, drop: np.ndarray, population: np.ndarray
+) -> float:
+    """Fixed VH threshold, or a robust outlier threshold over the scene."""
+    multiplier = config.adaptive_vh_mad
+    if multiplier is None:
+        return float(config.vh_drop_db)
+    sample = drop[population]
+    sample = sample[np.isfinite(sample)]
+    if sample.size < 64:
+        return float(config.vh_drop_db)
+    median = float(np.median(sample))
+    mad = float(np.median(np.abs(sample - median)))
+    if mad <= 0:
+        return float(config.vh_drop_db)
+    adaptive = median + multiplier * 1.4826 * mad
+    return float(max(adaptive, config.adaptive_change_floor * config.vh_drop_db))
 
 
 # ---------------------------------------------------------------------------

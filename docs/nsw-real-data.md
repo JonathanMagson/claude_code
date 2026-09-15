@@ -39,23 +39,73 @@ touched, and cloud is screened **over the AOI** rather than on the scene-level
 metadata — a tile can be 70% cloudy and perfectly clear over the paddock in
 question.
 
-## No Sentinel-1
+## Sentinel-1, calibrated from the raw archive
 
-There is no free, analysis-ready Sentinel-1 for Australia reachable from this
-environment. Planetary Computer's `sentinel-1-rtc`, CDSE and ASF are all
-blocked; the public `sentinel-s1-rtc-indigo` bucket on AWS covers UTM zones
-10–19 only, which is the continental United States. The raw
-`sentinel-s1-l1c` GRD bucket is reachable, but turning GRD into calibrated,
-terrain-corrected gamma-nought is a processing chain in its own right and not
-something to do quickly and claim confidence in.
+Every *analysis-ready* Sentinel-1 product is out of reach here. Planetary
+Computer's `sentinel-1-rtc`, CDSE and ASF are all blocked at the egress
+policy, and the one open RTC bucket on AWS (`sentinel-s1-rtc-indigo`) covers
+UTM zones 10-19 — the continental United States. Australia has no
+analysis-ready option on any reachable host.
 
-So the real runs have **no radar confirmation**, which removes the pipeline's
-main defence. In its place `vegmon.persistence` supplies a weaker but
-independent second opinion: a clearing event does not grow back, so the
-spectral drop must still be there several seasons later. That rejects harvest,
-drought dips and unmasked cloud shadow — using observations that played no
-part in the original detection. It does **not** reject fire. Where Sentinel-1
-is reachable, use it.
+What *is* open, anonymous and complete is the **Level-1 GRD archive** in
+`s3://sentinel-s1-l1c`: full SAFE products, measurement GeoTIFFs, calibration
+and thermal-noise LUTs, and the geolocation grid. That is enough to build the
+product rather than download it, and `vegmon.s1grd` does:
+
+1. **Find the scenes without a search API.** There is no index, so coverage
+   comes from the orbit. Sentinel-1 is sun-synchronous with an 18:00
+   local-solar-time ascending node, so a given longitude is only ever imaged
+   in two narrow UTC windows a day — which cuts the ~440 daily IW/DV scenes
+   to a few dozen. One repeat cycle is scanned against each scene's published
+   footprint to learn which relative orbits see the AOI; everything after that
+   follows the 12-day repeat and costs a handful of requests.
+2. **Calibrate.** `gamma0 = (DN² − noise) / A²`, with the per-product
+   calibration and noise LUTs applied in radar geometry where they are
+   defined. Noise removal matters specifically for the cross-polarised
+   channel: VH over woodland sits only a few decibels above a noise floor
+   that ramps across the swath, so leaving it in puts a range-dependent bias
+   straight into the band the detector reads.
+3. **Geocode.** The measurement TIFFs are tiled and carry the 210-point
+   geolocation grid as GCPs, so a windowed GCP warp pulls just the AOI out of
+   a 500 MB swath in about two seconds. The warp runs at the native 10 m and
+   the result is averaged down to the working grid **in linear power, not in
+   decibels** — averaging logarithms biases every multi-looked pixel low, and
+   is one of the easier ways to produce a plausible-looking backscatter image
+   that is quietly wrong. The 2×2 aggregation is also where the looks come
+   from.
+
+Loading 196 acquisitions (2019-2025, relative orbit 45) over a 10,486 ha AOI
+took 15 minutes.
+
+### No terrain correction, and why it is defensible here
+
+This does not do radiometric terrain correction. That matters less than it
+sounds, for one specific reason: the detector compares two acquisitions
+**from the same relative orbit**, so the viewing geometry, the local incidence
+angle and the terrain-driven part of the backscatter are identical in both and
+divide out of the difference. Ellipsoid gamma0 from a pinned orbit is a sound
+basis for change detection. It is *not* a sound basis for comparing absolute
+levels between orbits, and `s1grd` refuses to mix orbits for that reason —
+ascending and descending passes view the canopy from opposite sides and differ
+over the same intact woodland by more than the drop being looked for.
+
+### Does the calibration hold up?
+
+Checked against the Sentinel-2 woody mask over the same AOI, and against
+itself through time:
+
+| Check | Result | Expected |
+|---|---|---|
+| Woody VH gamma0 | −16.2 dB | −15 to −18 dB for woodland |
+| Cropping VH gamma0 | −17.6 dB | lower than woodland |
+| Woody minus cropping, VH | **+1.4 dB** | positive: canopy volume scattering |
+| Cross-ratio VH−VV, woody | **−5.7 dB** | less negative than cropping |
+| Cross-ratio VH−VV, cropping | −7.3 dB | surface scattering dominates |
+| Stable-woodland VH, 55 dates | **sd 0.73 dB** | ~0.5-1 dB from soil moisture |
+
+The last row is the one that matters most: a broken calibration shows
+multi-decibel jumps between scenes, and 0.73 dB of scatter over 55 dates is
+what correctly-calibrated Sentinel-1 does over stable forest.
 
 ## Three things that only broke on real data
 
@@ -141,7 +191,20 @@ Its effect on that same site:
 
 The 80 ha was cotton rotation, and it is now correctly rejected in every year.
 
-A fourth, smaller version of the same lesson applied to the regrowth stage:
+### 4. A fixed decibel threshold does not transfer either
+
+The same trap as the optical thresholds, on the radar side. Measured over the
+real NSW scene, the VH change distribution has a MAD of only **0.43 dB** but a
+99th percentile of **2.7 dB** — speckle residual and soil moisture give it a
+heavy tail the optical indices do not have. A fixed 2 dB drop, which is a
+perfectly defensible number in the literature and the one the synthetic scene
+suggested, selected **4.6% of the whole AOI** and produced 440 ha of
+single-sensor "detections". `adaptive_vh_mad` applies the same robust
+`median + k·MAD` rule, and the right `k` there is about **5** where **3** is
+right on the optical side. The difference is the tail, not the noise level.
+That change cut the spurious radar-only area from 440 ha to 28 ha.
+
+A fifth, smaller version of the same lesson applied to the regrowth stage:
 raw NBR over inland NSW swings further between a wet year and a dry one than
 a clearing event moves it, so trajectories are now expressed as anomalies
 against **undisturbed woody ground in the same scene**, and the within-year
@@ -172,31 +235,33 @@ the ones that stand out from their neighbours:
 
 | Epoch | Woody | dNBR threshold | Confirmed patches | Confirmed ha | Review ha | Largest patch | Median patch |
 |---|---|---|---|---|---|---|---|
-| 2019&ndash;2020 | 56.1% | 0.393 | 3 | 5.3 | 59.6 | 3.0 | 1.2 |
-| 2020&ndash;2021 | 42.2% | 0.150 | 0 | 0.0 | 0.0 | &ndash; | &ndash; |
-| 2021&ndash;2022 | 30.1% | 0.126 | 1 | 0.6 | 0.0 | 0.6 | 0.6 |
-| 2022&ndash;2023 | 78.8% | 0.137 | 24 | 29.9 | 13.8 | 6.1 | 0.9 |
-| 2023&ndash;2024 | 66.8% | 0.178 | 0 | 0.0 | 0.0 | &ndash; | &ndash; |
-| 2024&ndash;2025 | 74.2% | 0.151 | 3 | 9.1 | 1.7 | 6.5 | 1.5 |
+| 2019&ndash;2020 | 56.1% | 0.393 | 0 | 0.0 | 93.9 | &ndash; | &ndash; |
+| 2020&ndash;2021 | 42.2% | 0.150 | 0 | 0.0 | 93.6 | &ndash; | &ndash; |
+| 2021&ndash;2022 | 30.1% | 0.126 | 0 | 0.0 | 30.4 | &ndash; | &ndash; |
+| 2022&ndash;2023 | 78.8% | 0.137 | 0 | 0.0 | 71.8 | &ndash; | &ndash; |
+| 2023&ndash;2024 | 66.8% | 0.178 | 0 | 0.0 | 0.8 | &ndash; | &ndash; |
+| 2024&ndash;2025 | 74.2% | 0.151 | 0 | 0.0 | 69.9 | &ndash; | &ndash; |
 
-Reading it:
+Reading it (this table is the **fused** run, with real Sentinel-1 supplying the
+confirming evidence):
 
-* **2019–2020** put 59.6 ha in the review tier against only 5.3 ha confirmed.
-  That epoch spans the Black Summer fires. Spectral change with no persistence
-  is what a burn scar that recovered looks like, and the tier separation is
-  doing exactly the job it exists for.
-* **2022–2023** is the largest signal, and its *shape* argues against
-  clearing: 24 patches with a median of 0.9 ha and shape indices of 1.5–2.2,
-  scattered through the woodland rather than squared off against paddock
-  boundaries. That epoch straddles the break from the 2022 La Niña floods to
-  the 2023 El Niño. Drought canopy thinning is the better explanation, and the
-  regrowth stage supports it: of the 29.9 ha, 9.0 ha had already **recovered**
-  and 16.8 ha was **recovering** within two and a half years, on low
-  within-year swings (0.05–0.25) that confirm the returning cover is woody.
-  Mechanical clearing does not come back like that.
-* **2024–2025** is the more clearing-shaped result: three patches, 9.1 ha, the
-  largest 6.5 ha. There is not yet enough post-event record to say what is
-  happening on it.
+* **Nothing is confirmed, in any epoch.** Everything the optical detector
+  found sits in the review tier because the radar did not corroborate it. The
+  per-epoch breakdown of what each sensor saw is in the next section, and it
+  is the substantive result of this whole exercise.
+* **2022–2023** is by far the largest optical signal (171 ha before sieving,
+  71.8 ha of patches after). Its *shape* already argued against clearing:
+  small patches, median under 1 ha, shape indices 1.5–2.2, scattered through
+  the woodland rather than squared off against paddock boundaries. That epoch
+  straddles the break from the 2022 La Niña floods to the 2023 El Niño.
+* Run with **temporal persistence** instead of radar, the same epoch returns
+  24 confirmed patches over 29.9 ha — and then the regrowth stage undercuts
+  them anyway: 9.0 ha had already **recovered** and 16.8 ha was **recovering**
+  within two and a half years, on low within-year swings (0.05–0.25) that
+  confirm the returning cover is woody. Mechanical clearing does not come
+  back like that. Persistence rules out harvest and drought *dips*; it cannot
+  rule out a multi-year drought *decline*, and here it did not. The radar
+  does.
 * The woody fraction moves between epochs (30–79%) because the amplitude gate
   reads the 24 months before each baseline, and how strongly the landscape
   cycled in those two years changes what counts as steady. Worth knowing
@@ -206,8 +271,43 @@ The same scan over the Namoi irrigated site returns **zero confirmed clearing
 in all six epochs**, which is the correct answer for a fully-cultivated
 floodplain and the clearest evidence that the amplitude gate works.
 
+### What Sentinel-1 says about all of it
+
+With real radar in the pipeline, the fusion returns **zero confirmed clearing
+in every epoch at this site**. That is not the detector failing to fire — it is
+the two sensors disagreeing, which is the answer the design exists to produce.
+The table below is the whole argument:
+
+| Epoch | Sentinel-2 ha | Sentinel-1 ha | Both ha | Median VH drop *inside* the optical detections |
+|---|---|---|---|---|
+| 2019&ndash;2020 | 92.5 | 34.5 | 0.6 | 0.20 dB |
+| 2020&ndash;2021 | 7.6 | 118.4 | 0.1 | 0.40 dB |
+| 2021&ndash;2022 | 4.9 | 35.7 | 0.0 | &minus;0.02 dB |
+| 2022&ndash;2023 | 171.4 | 34.8 | 4.2 | 1.34 dB |
+| 2023&ndash;2024 | 3.7 | 1.7 | 0.0 | 0.12 dB |
+| 2024&ndash;2025 | 27.4 | 66.0 | 0.8 | 0.10 dB |
+
+The last column is the finding. Across seven years, where Sentinel-2 sees
+spectral loss, Sentinel-1 sees essentially no structural loss — a few tenths
+of a decibel, against an adaptive threshold of 1.5-3 dB. Even the large
+2022-2023 signal only reaches 1.34 dB. Woody structure did not leave those
+sites.
+
+That is an independent confirmation of what the regrowth trajectories already
+said: the 2022-2023 signal is **drought canopy thinning**, not clearing.
+Browning drops NBR hard and leaves the stems standing, so the radar does not
+move; and the sites greened back up within two and a half years. Two
+unrelated lines of evidence, the same conclusion.
+
+**What this run does not establish** is that the detector finds real clearing
+on real data — there was apparently none to find in this AOI over this period,
+and a null result cannot demonstrate sensitivity. That has only been shown
+against synthetic truth. Validation against SLATS woody change layers remains
+the necessary next step.
+
 Outputs for the 2022–2023 epoch are in
-[`docs/example-outputs-nsw/`](example-outputs-nsw/).
+[`docs/example-outputs-nsw/`](example-outputs-nsw/), including the recovery
+trajectories from the persistence-confirmed variant of the same run.
 
 ## What this says about using it operationally
 

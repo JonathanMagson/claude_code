@@ -114,6 +114,35 @@ def build_parser() -> argparse.ArgumentParser:
     aws.add_argument("--cache", type=Path, default=None,
                      help="npz path to cache the loaded series in")
     aws.add_argument(
+        "--s1",
+        action="store_true",
+        help=(
+            "also load Sentinel-1, calibrated in-process from the raw GRD archive on "
+            "AWS, and use it as the confirming evidence instead of temporal persistence"
+        ),
+    )
+    aws.add_argument(
+        "--s1-orbit",
+        type=int,
+        default=None,
+        help=(
+            "relative orbit to pin Sentinel-1 to (1-175). Defaults to the first one "
+            "found covering the AOI. Never mix orbits: ascending and descending "
+            "passes differ over intact woodland by more than the signal"
+        ),
+    )
+    aws.add_argument(
+        "--adaptive-vh-mad",
+        type=float,
+        default=5.0,
+        help=(
+            "MAD multiplier for the adaptive Sentinel-1 VH threshold; 0 disables and "
+            "falls back to the fixed decibel drop"
+        ),
+    )
+    aws.add_argument("--s1-cache", type=Path, default=None,
+                     help="npz path to cache the calibrated Sentinel-1 series in")
+    aws.add_argument(
         "--epochs",
         action="store_true",
         help=(
@@ -320,6 +349,7 @@ def command_aws(args) -> int:
         adaptive_woody_quantile=args.adaptive_woody or None,
         adaptive_change_mad=args.adaptive_mad or None,
         max_pre_seasonal_amplitude=args.max_amplitude or None,
+        adaptive_vh_mad=args.adaptive_vh_mad or None,
     )
     config = PipelineConfig(
         aoi=aoi, periods=periods, detection=detection, resolution=args.resolution
@@ -345,6 +375,10 @@ def command_aws(args) -> int:
         # against a stack with nothing in it.
         radar = cached.radar if cached.radar is not None and len(cached.radar) else None
         scene = Scene(optical=cached.optical, radar=radar, grid=cached.grid)
+
+    if args.s1:
+        radar_series = _load_or_cache_radar(args, grid, periods, config)
+        scene = Scene(optical=scene.optical, radar=radar_series, grid=scene.grid)
     else:
         try:
             optical = load_sentinel2(
@@ -360,11 +394,17 @@ def command_aws(args) -> int:
 
     if not args.quiet:
         print(
-            f"  {len(scene.optical)} usable acquisitions, "
+            f"  {len(scene.optical)} usable Sentinel-2 acquisitions, "
             f"{cloud_free_days(scene.optical, 0.2)} of them under 20% cloud over the AOI"
         )
-        print("  no analysis-ready Sentinel-1 is reachable for Australia from the free")
-        print("  catalogues, so temporal persistence supplies the confirming evidence.")
+        if scene.radar is not None:
+            print(
+                f"  {len(scene.radar)} Sentinel-1 acquisitions on one relative orbit, "
+                f"calibrated to gamma0 from the raw GRD archive"
+            )
+        else:
+            print("  no Sentinel-1 loaded: temporal persistence supplies the")
+            print("  confirming evidence instead, which does not exclude fire.")
 
     result = run_pipeline(
         scene,
@@ -409,6 +449,52 @@ def command_aws(args) -> int:
         for name, path in written.items():
             print(f"  {name:<12} {path}")
     return 0
+
+
+def _load_or_cache_radar(args, grid, periods, config):
+    """Load Sentinel-1 for the AOI, reusing a cached calibrated series if present."""
+    import json
+
+    import numpy as np
+
+    from vegmon.s1grd import load_sentinel1
+    from vegmon.series import RadarSeries
+
+    cache = args.s1_cache
+    if cache and Path(cache).exists():
+        if not args.quiet:
+            print(f"  loading cached Sentinel-1 series from {cache}")
+        data = np.load(cache, allow_pickle=False)
+        meta = json.loads(bytes(data["meta"]).decode("utf-8"))
+        return RadarSeries(
+            grid=grid,
+            times=data["times"].astype("datetime64[D]"),
+            vv_db=data["vv"],
+            vh_db=data["vh"],
+            orbit_state=list(meta.get("orbit") or []) or None,
+            sensor=meta.get("sensor", "aws-sentinel-s1-l1c:GRD"),
+        )
+
+    if not args.quiet:
+        print("  finding Sentinel-1 coverage (no search API; scanning one repeat cycle)...")
+    series = load_sentinel1(
+        grid, args.lon, args.lat, periods.series_start, periods.series_end,
+        relative_orbit_number=args.s1_orbit, workers=6, progress=not args.quiet,
+    )
+    if cache:
+        Path(cache).parent.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(
+            cache,
+            times=series.times.astype("datetime64[D]").astype("int64"),
+            vv=series.vv_db,
+            vh=series.vh_db,
+            meta=np.frombuffer(
+                json.dumps({"orbit": list(series.orbit_state or []),
+                            "sensor": series.sensor}).encode("utf-8"),
+                dtype=np.uint8,
+            ),
+        )
+    return series
 
 
 def _bounds_lonlat(grid):

@@ -238,6 +238,18 @@ class DetectionConfig:
     """Side length in pixels of the boxcar multi-look filter applied to each
     S1 composite. Trades spatial detail for a usable signal-to-noise ratio."""
 
+    adaptive_vh_mad: Optional[float] = None
+    """MAD multiplier for an adaptive Sentinel-1 VH threshold.
+
+    Kept separate from :attr:`adaptive_change_mad` because the two
+    distributions are not the same shape. Measured over a real NSW scene, the
+    VH change distribution has a MAD of only 0.43 dB but a 99th percentile of
+    2.7 dB - speckle residual and soil moisture put a heavy tail on it that the
+    optical indices do not have. A fixed 2 dB threshold, which is a defensible
+    number in the literature, lit up 4.6% of that scene. Multipliers around 5
+    are right here where 3 is right on the optical side; the difference is the
+    tail, not the noise level."""
+
     min_s1_observations: int = 3
     """Minimum S1 acquisitions per window. Temporal median over >=3 passes is
     what makes the dB drop robust to speckle and to soil-moisture spikes."""
