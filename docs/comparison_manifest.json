@@ -1,0 +1,720 @@
+{
+  "generated": "2026-09-16T02:15:20",
+  "ga_nrb_bucket": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com",
+  "grd_bucket": "https://sentinel-s1-l1c.s3.eu-central-1.amazonaws.com",
+  "slc_bucket": "https://sentinel1-slc.s3.eu-west-1.amazonaws.com",
+  "aois": {
+    "hunter": {
+      "label": "Hunter Valley (Singleton - Muswellbrook)",
+      "bbox": [
+        150.9,
+        -32.8,
+        151.45,
+        -32.25
+      ],
+      "centre": [
+        151.17,
+        -32.53
+      ],
+      "ga_nrb": {
+        "covered": false,
+        "product": "ga_s1_nrb_iw_vv_vh_1",
+        "bursts": [],
+        "acquisitions": [],
+        "slc_scene_ids": []
+      },
+      "sentinel1": {
+        "matched_to_ga": [],
+        "independent_grd": {
+          "relative_orbit": 147,
+          "window": [
+            "2026-08-17",
+            "2026-09-16"
+          ],
+          "scenes": [
+            {
+              "scene_id": "S1D_IW_GRDH_1SDV_20260820T191448_20260820T191513_004213_007BAD_16C0",
+              "acquired": "2026-08-20",
+              "start_time": "2026-08-20T19:14:48",
+              "absolute_orbit": 4213,
+              "relative_orbit": 147,
+              "mission": "S1D",
+              "url": "https://sentinel-s1-l1c.s3.eu-central-1.amazonaws.com/GRD/2026/8/20/IW/DV/S1D_IW_GRDH_1SDV_20260820T191448_20260820T191513_004213_007BAD_16C0/"
+            },
+            {
+              "scene_id": "S1D_IW_GRDH_1SDV_20260901T191448_20260901T191513_004388_0081D1_7B87",
+              "acquired": "2026-09-01",
+              "start_time": "2026-09-01T19:14:48",
+              "absolute_orbit": 4388,
+              "relative_orbit": 147,
+              "mission": "S1D",
+              "url": "https://sentinel-s1-l1c.s3.eu-central-1.amazonaws.com/GRD/2026/9/1/IW/DV/S1D_IW_GRDH_1SDV_20260901T191448_20260901T191513_004388_0081D1_7B87/"
+            },
+            {
+              "scene_id": "S1D_IW_GRDH_1SDV_20260913T191449_20260913T191514_004563_0087E8_B409",
+              "acquired": "2026-09-13",
+              "start_time": "2026-09-13T19:14:49",
+              "absolute_orbit": 4563,
+              "relative_orbit": 147,
+              "mission": "S1D",
+              "url": "https://sentinel-s1-l1c.s3.eu-central-1.amazonaws.com/GRD/2026/9/13/IW/DV/S1D_IW_GRDH_1SDV_20260913T191449_20260913T191514_004563_0087E8_B409/"
+            }
+          ]
+        }
+      }
+    },
+    "pilliga": {
+      "label": "Pilliga Forest (Narrabri - Baradine)",
+      "bbox": [
+        148.9,
+        -31.1,
+        149.75,
+        -30.35
+      ],
+      "centre": [
+        149.32,
+        -30.72
+      ],
+      "ga_nrb": {
+        "covered": true,
+        "product": "ga_s1_nrb_iw_vv_vh_1",
+        "bursts": [
+          {
+            "burst_id": "t045_095768_iw2",
+            "track": 45,
+            "bbox": [
+              149.0083,
+              -30.3509,
+              150.0655,
+              -29.8201
+            ]
+          },
+          {
+            "burst_id": "t045_095769_iw2",
+            "track": 45,
+            "bbox": [
+              148.956,
+              -30.5152,
+              150.0152,
+              -29.9844
+            ]
+          },
+          {
+            "burst_id": "t045_095769_iw3",
+            "track": 45,
+            "bbox": [
+              148.1633,
+              -30.3595,
+              149.1218,
+              -29.8538
+            ]
+          },
+          {
+            "burst_id": "t045_095770_iw2",
+            "track": 45,
+            "bbox": [
+              148.8982,
+              -30.6781,
+              149.9588,
+              -30.1475
+            ]
+          },
+          {
+            "burst_id": "t045_095770_iw3",
+            "track": 45,
+            "bbox": [
+              148.1052,
+              -30.5222,
+              149.0653,
+              -30.0169
+            ]
+          },
+          {
+            "burst_id": "t045_095771_iw1",
+            "track": 45,
+            "bbox": [
+              149.7459,
+              -30.9925,
+              150.7698,
+              -30.4548
+            ]
+          },
+          {
+            "burst_id": "t045_095771_iw2",
+            "track": 45,
+            "bbox": [
+              148.8456,
+              -30.8424,
+              149.9082,
+              -30.3121
+            ]
+          },
+          {
+            "burst_id": "t045_095771_iw3",
+            "track": 45,
+            "bbox": [
+              148.0513,
+              -30.6859,
+              149.0132,
+              -30.1809
+            ]
+          },
+          {
+            "burst_id": "t045_095772_iw1",
+            "track": 45,
+            "bbox": [
+              149.6947,
+              -31.157,
+              150.7209,
+              -30.6195
+            ]
+          },
+          {
+            "burst_id": "t045_095772_iw2",
+            "track": 45,
+            "bbox": [
+              148.7929,
+              -31.0066,
+              149.8578,
+              -30.4763
+            ]
+          },
+          {
+            "burst_id": "t045_095772_iw3",
+            "track": 45,
+            "bbox": [
+              147.9969,
+              -30.8498,
+              148.9611,
+              -30.3449
+            ]
+          },
+          {
+            "burst_id": "t045_095773_iw1",
+            "track": 45,
+            "bbox": [
+              149.6432,
+              -31.3218,
+              150.6718,
+              -30.7843
+            ]
+          },
+          {
+            "burst_id": "t045_095773_iw2",
+            "track": 45,
+            "bbox": [
+              148.7396,
+              -31.1705,
+              149.807,
+              -30.6408
+            ]
+          },
+          {
+            "burst_id": "t045_095773_iw3",
+            "track": 45,
+            "bbox": [
+              147.9426,
+              -31.0134,
+              148.9084,
+              -30.5088
+            ]
+          },
+          {
+            "burst_id": "t045_095774_iw1",
+            "track": 45,
+            "bbox": [
+              149.5917,
+              -31.4862,
+              150.6222,
+              -30.949
+            ]
+          },
+          {
+            "burst_id": "t045_095774_iw2",
+            "track": 45,
+            "bbox": [
+              148.6865,
+              -31.3347,
+              149.7559,
+              -30.8051
+            ]
+          },
+          {
+            "burst_id": "t045_095775_iw2",
+            "track": 45,
+            "bbox": [
+              148.6329,
+              -31.4988,
+              149.7048,
+              -30.9696
+            ]
+          }
+        ],
+        "acquisitions": [
+          {
+            "burst_id": "t045_095768_iw2",
+            "datetime": "20260420T192306",
+            "scene_id": "S1A_IW_SLC__1SDV_20260420T192256_20260420T192323_064167_081391_1104",
+            "absolute_orbit": 64167,
+            "relative_orbit": 45,
+            "orbit_state": "descending",
+            "prefix": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095768_iw2/2026/04/20/20260420T192306/",
+            "assets": {
+              "VH-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095768_iw2/2026/04/20/20260420T192306/ga_s1a_nrb_1-0-0_T045-095768-IW2_20260420T192306Z_VH-gamma0.tif",
+              "VV-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095768_iw2/2026/04/20/20260420T192306/ga_s1a_nrb_1-0-0_T045-095768-IW2_20260420T192306Z_VV-gamma0.tif",
+              "checksum.sha1": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095768_iw2/2026/04/20/20260420T192306/ga_s1a_nrb_1-0-0_T045-095768-IW2_20260420T192306Z_checksum.sha1",
+              "mask.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095768_iw2/2026/04/20/20260420T192306/ga_s1a_nrb_1-0-0_T045-095768-IW2_20260420T192306Z_mask.tif",
+              "metadata.h5": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095768_iw2/2026/04/20/20260420T192306/ga_s1a_nrb_1-0-0_T045-095768-IW2_20260420T192306Z_metadata.h5",
+              "metadata.xml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095768_iw2/2026/04/20/20260420T192306/ga_s1a_nrb_1-0-0_T045-095768-IW2_20260420T192306Z_metadata.xml",
+              "proc-config.yaml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095768_iw2/2026/04/20/20260420T192306/ga_s1a_nrb_1-0-0_T045-095768-IW2_20260420T192306Z_proc-config.yaml",
+              "stac-item.json": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095768_iw2/2026/04/20/20260420T192306/ga_s1a_nrb_1-0-0_T045-095768-IW2_20260420T192306Z_stac-item.json",
+              "thumbnail.png": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095768_iw2/2026/04/20/20260420T192306/ga_s1a_nrb_1-0-0_T045-095768-IW2_20260420T192306Z_thumbnail.png"
+            }
+          },
+          {
+            "burst_id": "t045_095769_iw2",
+            "datetime": "20260420T192309",
+            "scene_id": "S1A_IW_SLC__1SDV_20260420T192256_20260420T192323_064167_081391_1104",
+            "absolute_orbit": 64167,
+            "relative_orbit": 45,
+            "orbit_state": "descending",
+            "prefix": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095769_iw2/2026/04/20/20260420T192309/",
+            "assets": {
+              "VH-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095769_iw2/2026/04/20/20260420T192309/ga_s1a_nrb_1-0-0_T045-095769-IW2_20260420T192309Z_VH-gamma0.tif",
+              "VV-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095769_iw2/2026/04/20/20260420T192309/ga_s1a_nrb_1-0-0_T045-095769-IW2_20260420T192309Z_VV-gamma0.tif",
+              "checksum.sha1": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095769_iw2/2026/04/20/20260420T192309/ga_s1a_nrb_1-0-0_T045-095769-IW2_20260420T192309Z_checksum.sha1",
+              "mask.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095769_iw2/2026/04/20/20260420T192309/ga_s1a_nrb_1-0-0_T045-095769-IW2_20260420T192309Z_mask.tif",
+              "metadata.h5": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095769_iw2/2026/04/20/20260420T192309/ga_s1a_nrb_1-0-0_T045-095769-IW2_20260420T192309Z_metadata.h5",
+              "metadata.xml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095769_iw2/2026/04/20/20260420T192309/ga_s1a_nrb_1-0-0_T045-095769-IW2_20260420T192309Z_metadata.xml",
+              "proc-config.yaml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095769_iw2/2026/04/20/20260420T192309/ga_s1a_nrb_1-0-0_T045-095769-IW2_20260420T192309Z_proc-config.yaml",
+              "stac-item.json": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095769_iw2/2026/04/20/20260420T192309/ga_s1a_nrb_1-0-0_T045-095769-IW2_20260420T192309Z_stac-item.json",
+              "thumbnail.png": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095769_iw2/2026/04/20/20260420T192309/ga_s1a_nrb_1-0-0_T045-095769-IW2_20260420T192309Z_thumbnail.png"
+            }
+          },
+          {
+            "burst_id": "t045_095769_iw3",
+            "datetime": "20260420T192310",
+            "scene_id": "S1A_IW_SLC__1SDV_20260420T192256_20260420T192323_064167_081391_1104",
+            "absolute_orbit": 64167,
+            "relative_orbit": 45,
+            "orbit_state": "descending",
+            "prefix": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095769_iw3/2026/04/20/20260420T192310/",
+            "assets": {
+              "VH-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095769_iw3/2026/04/20/20260420T192310/ga_s1a_nrb_1-0-0_T045-095769-IW3_20260420T192310Z_VH-gamma0.tif",
+              "VV-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095769_iw3/2026/04/20/20260420T192310/ga_s1a_nrb_1-0-0_T045-095769-IW3_20260420T192310Z_VV-gamma0.tif",
+              "checksum.sha1": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095769_iw3/2026/04/20/20260420T192310/ga_s1a_nrb_1-0-0_T045-095769-IW3_20260420T192310Z_checksum.sha1",
+              "mask.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095769_iw3/2026/04/20/20260420T192310/ga_s1a_nrb_1-0-0_T045-095769-IW3_20260420T192310Z_mask.tif",
+              "metadata.h5": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095769_iw3/2026/04/20/20260420T192310/ga_s1a_nrb_1-0-0_T045-095769-IW3_20260420T192310Z_metadata.h5",
+              "metadata.xml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095769_iw3/2026/04/20/20260420T192310/ga_s1a_nrb_1-0-0_T045-095769-IW3_20260420T192310Z_metadata.xml",
+              "proc-config.yaml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095769_iw3/2026/04/20/20260420T192310/ga_s1a_nrb_1-0-0_T045-095769-IW3_20260420T192310Z_proc-config.yaml",
+              "stac-item.json": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095769_iw3/2026/04/20/20260420T192310/ga_s1a_nrb_1-0-0_T045-095769-IW3_20260420T192310Z_stac-item.json",
+              "thumbnail.png": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095769_iw3/2026/04/20/20260420T192310/ga_s1a_nrb_1-0-0_T045-095769-IW3_20260420T192310Z_thumbnail.png"
+            }
+          },
+          {
+            "burst_id": "t045_095770_iw2",
+            "datetime": "20260420T192311",
+            "scene_id": "S1A_IW_SLC__1SDV_20260420T192256_20260420T192323_064167_081391_1104",
+            "absolute_orbit": 64167,
+            "relative_orbit": 45,
+            "orbit_state": "descending",
+            "prefix": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095770_iw2/2026/04/20/20260420T192311/",
+            "assets": {
+              "VH-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095770_iw2/2026/04/20/20260420T192311/ga_s1a_nrb_1-0-0_T045-095770-IW2_20260420T192311Z_VH-gamma0.tif",
+              "VV-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095770_iw2/2026/04/20/20260420T192311/ga_s1a_nrb_1-0-0_T045-095770-IW2_20260420T192311Z_VV-gamma0.tif",
+              "checksum.sha1": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095770_iw2/2026/04/20/20260420T192311/ga_s1a_nrb_1-0-0_T045-095770-IW2_20260420T192311Z_checksum.sha1",
+              "mask.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095770_iw2/2026/04/20/20260420T192311/ga_s1a_nrb_1-0-0_T045-095770-IW2_20260420T192311Z_mask.tif",
+              "metadata.h5": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095770_iw2/2026/04/20/20260420T192311/ga_s1a_nrb_1-0-0_T045-095770-IW2_20260420T192311Z_metadata.h5",
+              "metadata.xml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095770_iw2/2026/04/20/20260420T192311/ga_s1a_nrb_1-0-0_T045-095770-IW2_20260420T192311Z_metadata.xml",
+              "proc-config.yaml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095770_iw2/2026/04/20/20260420T192311/ga_s1a_nrb_1-0-0_T045-095770-IW2_20260420T192311Z_proc-config.yaml",
+              "stac-item.json": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095770_iw2/2026/04/20/20260420T192311/ga_s1a_nrb_1-0-0_T045-095770-IW2_20260420T192311Z_stac-item.json",
+              "thumbnail.png": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095770_iw2/2026/04/20/20260420T192311/ga_s1a_nrb_1-0-0_T045-095770-IW2_20260420T192311Z_thumbnail.png"
+            }
+          },
+          {
+            "burst_id": "t045_095770_iw3",
+            "datetime": "20260420T192312",
+            "scene_id": "S1A_IW_SLC__1SDV_20260420T192256_20260420T192323_064167_081391_1104",
+            "absolute_orbit": 64167,
+            "relative_orbit": 45,
+            "orbit_state": "descending",
+            "prefix": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095770_iw3/2026/04/20/20260420T192312/",
+            "assets": {
+              "VH-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095770_iw3/2026/04/20/20260420T192312/ga_s1a_nrb_1-0-0_T045-095770-IW3_20260420T192312Z_VH-gamma0.tif",
+              "VV-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095770_iw3/2026/04/20/20260420T192312/ga_s1a_nrb_1-0-0_T045-095770-IW3_20260420T192312Z_VV-gamma0.tif",
+              "checksum.sha1": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095770_iw3/2026/04/20/20260420T192312/ga_s1a_nrb_1-0-0_T045-095770-IW3_20260420T192312Z_checksum.sha1",
+              "mask.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095770_iw3/2026/04/20/20260420T192312/ga_s1a_nrb_1-0-0_T045-095770-IW3_20260420T192312Z_mask.tif",
+              "metadata.h5": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095770_iw3/2026/04/20/20260420T192312/ga_s1a_nrb_1-0-0_T045-095770-IW3_20260420T192312Z_metadata.h5",
+              "metadata.xml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095770_iw3/2026/04/20/20260420T192312/ga_s1a_nrb_1-0-0_T045-095770-IW3_20260420T192312Z_metadata.xml",
+              "proc-config.yaml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095770_iw3/2026/04/20/20260420T192312/ga_s1a_nrb_1-0-0_T045-095770-IW3_20260420T192312Z_proc-config.yaml",
+              "stac-item.json": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095770_iw3/2026/04/20/20260420T192312/ga_s1a_nrb_1-0-0_T045-095770-IW3_20260420T192312Z_stac-item.json",
+              "thumbnail.png": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095770_iw3/2026/04/20/20260420T192312/ga_s1a_nrb_1-0-0_T045-095770-IW3_20260420T192312Z_thumbnail.png"
+            }
+          },
+          {
+            "burst_id": "t045_095771_iw1",
+            "datetime": "20260420T192313",
+            "scene_id": "S1A_IW_SLC__1SDV_20260420T192256_20260420T192323_064167_081391_1104",
+            "absolute_orbit": 64167,
+            "relative_orbit": 45,
+            "orbit_state": "descending",
+            "prefix": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw1/2026/04/20/20260420T192313/",
+            "assets": {
+              "VH-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw1/2026/04/20/20260420T192313/ga_s1a_nrb_1-0-0_T045-095771-IW1_20260420T192313Z_VH-gamma0.tif",
+              "VV-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw1/2026/04/20/20260420T192313/ga_s1a_nrb_1-0-0_T045-095771-IW1_20260420T192313Z_VV-gamma0.tif",
+              "checksum.sha1": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw1/2026/04/20/20260420T192313/ga_s1a_nrb_1-0-0_T045-095771-IW1_20260420T192313Z_checksum.sha1",
+              "mask.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw1/2026/04/20/20260420T192313/ga_s1a_nrb_1-0-0_T045-095771-IW1_20260420T192313Z_mask.tif",
+              "metadata.h5": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw1/2026/04/20/20260420T192313/ga_s1a_nrb_1-0-0_T045-095771-IW1_20260420T192313Z_metadata.h5",
+              "metadata.xml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw1/2026/04/20/20260420T192313/ga_s1a_nrb_1-0-0_T045-095771-IW1_20260420T192313Z_metadata.xml",
+              "proc-config.yaml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw1/2026/04/20/20260420T192313/ga_s1a_nrb_1-0-0_T045-095771-IW1_20260420T192313Z_proc-config.yaml",
+              "stac-item.json": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw1/2026/04/20/20260420T192313/ga_s1a_nrb_1-0-0_T045-095771-IW1_20260420T192313Z_stac-item.json",
+              "thumbnail.png": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw1/2026/04/20/20260420T192313/ga_s1a_nrb_1-0-0_T045-095771-IW1_20260420T192313Z_thumbnail.png"
+            }
+          },
+          {
+            "burst_id": "t045_095771_iw2",
+            "datetime": "20260420T192314",
+            "scene_id": "S1A_IW_SLC__1SDV_20260420T192256_20260420T192323_064167_081391_1104",
+            "absolute_orbit": 64167,
+            "relative_orbit": 45,
+            "orbit_state": "descending",
+            "prefix": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw2/2026/04/20/20260420T192314/",
+            "assets": {
+              "VH-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw2/2026/04/20/20260420T192314/ga_s1a_nrb_1-0-0_T045-095771-IW2_20260420T192314Z_VH-gamma0.tif",
+              "VV-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw2/2026/04/20/20260420T192314/ga_s1a_nrb_1-0-0_T045-095771-IW2_20260420T192314Z_VV-gamma0.tif",
+              "checksum.sha1": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw2/2026/04/20/20260420T192314/ga_s1a_nrb_1-0-0_T045-095771-IW2_20260420T192314Z_checksum.sha1",
+              "mask.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw2/2026/04/20/20260420T192314/ga_s1a_nrb_1-0-0_T045-095771-IW2_20260420T192314Z_mask.tif",
+              "metadata.h5": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw2/2026/04/20/20260420T192314/ga_s1a_nrb_1-0-0_T045-095771-IW2_20260420T192314Z_metadata.h5",
+              "metadata.xml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw2/2026/04/20/20260420T192314/ga_s1a_nrb_1-0-0_T045-095771-IW2_20260420T192314Z_metadata.xml",
+              "proc-config.yaml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw2/2026/04/20/20260420T192314/ga_s1a_nrb_1-0-0_T045-095771-IW2_20260420T192314Z_proc-config.yaml",
+              "stac-item.json": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw2/2026/04/20/20260420T192314/ga_s1a_nrb_1-0-0_T045-095771-IW2_20260420T192314Z_stac-item.json",
+              "thumbnail.png": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw2/2026/04/20/20260420T192314/ga_s1a_nrb_1-0-0_T045-095771-IW2_20260420T192314Z_thumbnail.png"
+            }
+          },
+          {
+            "burst_id": "t045_095771_iw3",
+            "datetime": "20260420T192315",
+            "scene_id": "S1A_IW_SLC__1SDV_20260420T192256_20260420T192323_064167_081391_1104",
+            "absolute_orbit": 64167,
+            "relative_orbit": 45,
+            "orbit_state": "descending",
+            "prefix": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw3/2026/04/20/20260420T192315/",
+            "assets": {
+              "VH-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw3/2026/04/20/20260420T192315/ga_s1a_nrb_1-0-0_T045-095771-IW3_20260420T192315Z_VH-gamma0.tif",
+              "VV-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw3/2026/04/20/20260420T192315/ga_s1a_nrb_1-0-0_T045-095771-IW3_20260420T192315Z_VV-gamma0.tif",
+              "checksum.sha1": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw3/2026/04/20/20260420T192315/ga_s1a_nrb_1-0-0_T045-095771-IW3_20260420T192315Z_checksum.sha1",
+              "mask.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw3/2026/04/20/20260420T192315/ga_s1a_nrb_1-0-0_T045-095771-IW3_20260420T192315Z_mask.tif",
+              "metadata.h5": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw3/2026/04/20/20260420T192315/ga_s1a_nrb_1-0-0_T045-095771-IW3_20260420T192315Z_metadata.h5",
+              "metadata.xml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw3/2026/04/20/20260420T192315/ga_s1a_nrb_1-0-0_T045-095771-IW3_20260420T192315Z_metadata.xml",
+              "proc-config.yaml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw3/2026/04/20/20260420T192315/ga_s1a_nrb_1-0-0_T045-095771-IW3_20260420T192315Z_proc-config.yaml",
+              "stac-item.json": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw3/2026/04/20/20260420T192315/ga_s1a_nrb_1-0-0_T045-095771-IW3_20260420T192315Z_stac-item.json",
+              "thumbnail.png": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095771_iw3/2026/04/20/20260420T192315/ga_s1a_nrb_1-0-0_T045-095771-IW3_20260420T192315Z_thumbnail.png"
+            }
+          },
+          {
+            "burst_id": "t045_095772_iw1",
+            "datetime": "20260420T192316",
+            "scene_id": "S1A_IW_SLC__1SDV_20260420T192256_20260420T192323_064167_081391_1104",
+            "absolute_orbit": 64167,
+            "relative_orbit": 45,
+            "orbit_state": "descending",
+            "prefix": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw1/2026/04/20/20260420T192316/",
+            "assets": {
+              "VH-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw1/2026/04/20/20260420T192316/ga_s1a_nrb_1-0-0_T045-095772-IW1_20260420T192316Z_VH-gamma0.tif",
+              "VV-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw1/2026/04/20/20260420T192316/ga_s1a_nrb_1-0-0_T045-095772-IW1_20260420T192316Z_VV-gamma0.tif",
+              "checksum.sha1": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw1/2026/04/20/20260420T192316/ga_s1a_nrb_1-0-0_T045-095772-IW1_20260420T192316Z_checksum.sha1",
+              "mask.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw1/2026/04/20/20260420T192316/ga_s1a_nrb_1-0-0_T045-095772-IW1_20260420T192316Z_mask.tif",
+              "metadata.h5": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw1/2026/04/20/20260420T192316/ga_s1a_nrb_1-0-0_T045-095772-IW1_20260420T192316Z_metadata.h5",
+              "metadata.xml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw1/2026/04/20/20260420T192316/ga_s1a_nrb_1-0-0_T045-095772-IW1_20260420T192316Z_metadata.xml",
+              "proc-config.yaml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw1/2026/04/20/20260420T192316/ga_s1a_nrb_1-0-0_T045-095772-IW1_20260420T192316Z_proc-config.yaml",
+              "stac-item.json": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw1/2026/04/20/20260420T192316/ga_s1a_nrb_1-0-0_T045-095772-IW1_20260420T192316Z_stac-item.json",
+              "thumbnail.png": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw1/2026/04/20/20260420T192316/ga_s1a_nrb_1-0-0_T045-095772-IW1_20260420T192316Z_thumbnail.png"
+            }
+          },
+          {
+            "burst_id": "t045_095772_iw2",
+            "datetime": "20260420T192317",
+            "scene_id": "S1A_IW_SLC__1SDV_20260420T192256_20260420T192323_064167_081391_1104",
+            "absolute_orbit": 64167,
+            "relative_orbit": 45,
+            "orbit_state": "descending",
+            "prefix": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw2/2026/04/20/20260420T192317/",
+            "assets": {
+              "VH-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw2/2026/04/20/20260420T192317/ga_s1a_nrb_1-0-0_T045-095772-IW2_20260420T192317Z_VH-gamma0.tif",
+              "VV-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw2/2026/04/20/20260420T192317/ga_s1a_nrb_1-0-0_T045-095772-IW2_20260420T192317Z_VV-gamma0.tif",
+              "checksum.sha1": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw2/2026/04/20/20260420T192317/ga_s1a_nrb_1-0-0_T045-095772-IW2_20260420T192317Z_checksum.sha1",
+              "mask.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw2/2026/04/20/20260420T192317/ga_s1a_nrb_1-0-0_T045-095772-IW2_20260420T192317Z_mask.tif",
+              "metadata.h5": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw2/2026/04/20/20260420T192317/ga_s1a_nrb_1-0-0_T045-095772-IW2_20260420T192317Z_metadata.h5",
+              "metadata.xml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw2/2026/04/20/20260420T192317/ga_s1a_nrb_1-0-0_T045-095772-IW2_20260420T192317Z_metadata.xml",
+              "proc-config.yaml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw2/2026/04/20/20260420T192317/ga_s1a_nrb_1-0-0_T045-095772-IW2_20260420T192317Z_proc-config.yaml",
+              "stac-item.json": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw2/2026/04/20/20260420T192317/ga_s1a_nrb_1-0-0_T045-095772-IW2_20260420T192317Z_stac-item.json",
+              "thumbnail.png": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw2/2026/04/20/20260420T192317/ga_s1a_nrb_1-0-0_T045-095772-IW2_20260420T192317Z_thumbnail.png"
+            }
+          },
+          {
+            "burst_id": "t045_095772_iw3",
+            "datetime": "20260420T192318",
+            "scene_id": "S1A_IW_SLC__1SDV_20260420T192256_20260420T192323_064167_081391_1104",
+            "absolute_orbit": 64167,
+            "relative_orbit": 45,
+            "orbit_state": "descending",
+            "prefix": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw3/2026/04/20/20260420T192318/",
+            "assets": {
+              "VH-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw3/2026/04/20/20260420T192318/ga_s1a_nrb_1-0-0_T045-095772-IW3_20260420T192318Z_VH-gamma0.tif",
+              "VV-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw3/2026/04/20/20260420T192318/ga_s1a_nrb_1-0-0_T045-095772-IW3_20260420T192318Z_VV-gamma0.tif",
+              "checksum.sha1": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw3/2026/04/20/20260420T192318/ga_s1a_nrb_1-0-0_T045-095772-IW3_20260420T192318Z_checksum.sha1",
+              "mask.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw3/2026/04/20/20260420T192318/ga_s1a_nrb_1-0-0_T045-095772-IW3_20260420T192318Z_mask.tif",
+              "metadata.h5": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw3/2026/04/20/20260420T192318/ga_s1a_nrb_1-0-0_T045-095772-IW3_20260420T192318Z_metadata.h5",
+              "metadata.xml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw3/2026/04/20/20260420T192318/ga_s1a_nrb_1-0-0_T045-095772-IW3_20260420T192318Z_metadata.xml",
+              "proc-config.yaml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw3/2026/04/20/20260420T192318/ga_s1a_nrb_1-0-0_T045-095772-IW3_20260420T192318Z_proc-config.yaml",
+              "stac-item.json": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw3/2026/04/20/20260420T192318/ga_s1a_nrb_1-0-0_T045-095772-IW3_20260420T192318Z_stac-item.json",
+              "thumbnail.png": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095772_iw3/2026/04/20/20260420T192318/ga_s1a_nrb_1-0-0_T045-095772-IW3_20260420T192318Z_thumbnail.png"
+            }
+          },
+          {
+            "burst_id": "t045_095773_iw1",
+            "datetime": "20260420T192319",
+            "scene_id": "S1A_IW_SLC__1SDV_20260420T192256_20260420T192323_064167_081391_1104",
+            "absolute_orbit": 64167,
+            "relative_orbit": 45,
+            "orbit_state": "descending",
+            "prefix": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw1/2026/04/20/20260420T192319/",
+            "assets": {
+              "VH-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw1/2026/04/20/20260420T192319/ga_s1a_nrb_1-0-0_T045-095773-IW1_20260420T192319Z_VH-gamma0.tif",
+              "VV-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw1/2026/04/20/20260420T192319/ga_s1a_nrb_1-0-0_T045-095773-IW1_20260420T192319Z_VV-gamma0.tif",
+              "checksum.sha1": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw1/2026/04/20/20260420T192319/ga_s1a_nrb_1-0-0_T045-095773-IW1_20260420T192319Z_checksum.sha1",
+              "mask.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw1/2026/04/20/20260420T192319/ga_s1a_nrb_1-0-0_T045-095773-IW1_20260420T192319Z_mask.tif",
+              "metadata.h5": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw1/2026/04/20/20260420T192319/ga_s1a_nrb_1-0-0_T045-095773-IW1_20260420T192319Z_metadata.h5",
+              "metadata.xml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw1/2026/04/20/20260420T192319/ga_s1a_nrb_1-0-0_T045-095773-IW1_20260420T192319Z_metadata.xml",
+              "proc-config.yaml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw1/2026/04/20/20260420T192319/ga_s1a_nrb_1-0-0_T045-095773-IW1_20260420T192319Z_proc-config.yaml",
+              "stac-item.json": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw1/2026/04/20/20260420T192319/ga_s1a_nrb_1-0-0_T045-095773-IW1_20260420T192319Z_stac-item.json",
+              "thumbnail.png": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw1/2026/04/20/20260420T192319/ga_s1a_nrb_1-0-0_T045-095773-IW1_20260420T192319Z_thumbnail.png"
+            }
+          },
+          {
+            "burst_id": "t045_095773_iw2",
+            "datetime": "20260420T192320",
+            "scene_id": "S1A_IW_SLC__1SDV_20260420T192256_20260420T192323_064167_081391_1104",
+            "absolute_orbit": 64167,
+            "relative_orbit": 45,
+            "orbit_state": "descending",
+            "prefix": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw2/2026/04/20/20260420T192320/",
+            "assets": {
+              "VH-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw2/2026/04/20/20260420T192320/ga_s1a_nrb_1-0-0_T045-095773-IW2_20260420T192320Z_VH-gamma0.tif",
+              "VV-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw2/2026/04/20/20260420T192320/ga_s1a_nrb_1-0-0_T045-095773-IW2_20260420T192320Z_VV-gamma0.tif",
+              "checksum.sha1": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw2/2026/04/20/20260420T192320/ga_s1a_nrb_1-0-0_T045-095773-IW2_20260420T192320Z_checksum.sha1",
+              "mask.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw2/2026/04/20/20260420T192320/ga_s1a_nrb_1-0-0_T045-095773-IW2_20260420T192320Z_mask.tif",
+              "metadata.h5": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw2/2026/04/20/20260420T192320/ga_s1a_nrb_1-0-0_T045-095773-IW2_20260420T192320Z_metadata.h5",
+              "metadata.xml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw2/2026/04/20/20260420T192320/ga_s1a_nrb_1-0-0_T045-095773-IW2_20260420T192320Z_metadata.xml",
+              "proc-config.yaml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw2/2026/04/20/20260420T192320/ga_s1a_nrb_1-0-0_T045-095773-IW2_20260420T192320Z_proc-config.yaml",
+              "stac-item.json": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw2/2026/04/20/20260420T192320/ga_s1a_nrb_1-0-0_T045-095773-IW2_20260420T192320Z_stac-item.json",
+              "thumbnail.png": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw2/2026/04/20/20260420T192320/ga_s1a_nrb_1-0-0_T045-095773-IW2_20260420T192320Z_thumbnail.png"
+            }
+          },
+          {
+            "burst_id": "t045_095773_iw3",
+            "datetime": "20260420T192321",
+            "scene_id": "S1A_IW_SLC__1SDV_20260420T192321_20260420T192348_064167_081391_D1D8",
+            "absolute_orbit": 64167,
+            "relative_orbit": 45,
+            "orbit_state": "descending",
+            "prefix": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw3/2026/04/20/20260420T192321/",
+            "assets": {
+              "VH-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw3/2026/04/20/20260420T192321/ga_s1a_nrb_1-0-0_T045-095773-IW3_20260420T192321Z_VH-gamma0.tif",
+              "VV-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw3/2026/04/20/20260420T192321/ga_s1a_nrb_1-0-0_T045-095773-IW3_20260420T192321Z_VV-gamma0.tif",
+              "checksum.sha1": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw3/2026/04/20/20260420T192321/ga_s1a_nrb_1-0-0_T045-095773-IW3_20260420T192321Z_checksum.sha1",
+              "mask.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw3/2026/04/20/20260420T192321/ga_s1a_nrb_1-0-0_T045-095773-IW3_20260420T192321Z_mask.tif",
+              "metadata.h5": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw3/2026/04/20/20260420T192321/ga_s1a_nrb_1-0-0_T045-095773-IW3_20260420T192321Z_metadata.h5",
+              "metadata.xml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw3/2026/04/20/20260420T192321/ga_s1a_nrb_1-0-0_T045-095773-IW3_20260420T192321Z_metadata.xml",
+              "proc-config.yaml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw3/2026/04/20/20260420T192321/ga_s1a_nrb_1-0-0_T045-095773-IW3_20260420T192321Z_proc-config.yaml",
+              "stac-item.json": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw3/2026/04/20/20260420T192321/ga_s1a_nrb_1-0-0_T045-095773-IW3_20260420T192321Z_stac-item.json",
+              "thumbnail.png": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095773_iw3/2026/04/20/20260420T192321/ga_s1a_nrb_1-0-0_T045-095773-IW3_20260420T192321Z_thumbnail.png"
+            }
+          },
+          {
+            "burst_id": "t045_095774_iw1",
+            "datetime": "20260420T192321",
+            "scene_id": "S1A_IW_SLC__1SDV_20260420T192321_20260420T192348_064167_081391_D1D8",
+            "absolute_orbit": 64167,
+            "relative_orbit": 45,
+            "orbit_state": "descending",
+            "prefix": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095774_iw1/2026/04/20/20260420T192321/",
+            "assets": {
+              "VH-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095774_iw1/2026/04/20/20260420T192321/ga_s1a_nrb_1-0-0_T045-095774-IW1_20260420T192321Z_VH-gamma0.tif",
+              "VV-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095774_iw1/2026/04/20/20260420T192321/ga_s1a_nrb_1-0-0_T045-095774-IW1_20260420T192321Z_VV-gamma0.tif",
+              "checksum.sha1": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095774_iw1/2026/04/20/20260420T192321/ga_s1a_nrb_1-0-0_T045-095774-IW1_20260420T192321Z_checksum.sha1",
+              "mask.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095774_iw1/2026/04/20/20260420T192321/ga_s1a_nrb_1-0-0_T045-095774-IW1_20260420T192321Z_mask.tif",
+              "metadata.h5": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095774_iw1/2026/04/20/20260420T192321/ga_s1a_nrb_1-0-0_T045-095774-IW1_20260420T192321Z_metadata.h5",
+              "metadata.xml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095774_iw1/2026/04/20/20260420T192321/ga_s1a_nrb_1-0-0_T045-095774-IW1_20260420T192321Z_metadata.xml",
+              "proc-config.yaml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095774_iw1/2026/04/20/20260420T192321/ga_s1a_nrb_1-0-0_T045-095774-IW1_20260420T192321Z_proc-config.yaml",
+              "stac-item.json": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095774_iw1/2026/04/20/20260420T192321/ga_s1a_nrb_1-0-0_T045-095774-IW1_20260420T192321Z_stac-item.json",
+              "thumbnail.png": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095774_iw1/2026/04/20/20260420T192321/ga_s1a_nrb_1-0-0_T045-095774-IW1_20260420T192321Z_thumbnail.png"
+            }
+          },
+          {
+            "burst_id": "t045_095774_iw2",
+            "datetime": "20260420T192322",
+            "scene_id": "S1A_IW_SLC__1SDV_20260420T192321_20260420T192348_064167_081391_D1D8",
+            "absolute_orbit": 64167,
+            "relative_orbit": 45,
+            "orbit_state": "descending",
+            "prefix": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095774_iw2/2026/04/20/20260420T192322/",
+            "assets": {
+              "VH-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095774_iw2/2026/04/20/20260420T192322/ga_s1a_nrb_1-0-0_T045-095774-IW2_20260420T192322Z_VH-gamma0.tif",
+              "VV-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095774_iw2/2026/04/20/20260420T192322/ga_s1a_nrb_1-0-0_T045-095774-IW2_20260420T192322Z_VV-gamma0.tif",
+              "checksum.sha1": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095774_iw2/2026/04/20/20260420T192322/ga_s1a_nrb_1-0-0_T045-095774-IW2_20260420T192322Z_checksum.sha1",
+              "mask.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095774_iw2/2026/04/20/20260420T192322/ga_s1a_nrb_1-0-0_T045-095774-IW2_20260420T192322Z_mask.tif",
+              "metadata.h5": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095774_iw2/2026/04/20/20260420T192322/ga_s1a_nrb_1-0-0_T045-095774-IW2_20260420T192322Z_metadata.h5",
+              "metadata.xml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095774_iw2/2026/04/20/20260420T192322/ga_s1a_nrb_1-0-0_T045-095774-IW2_20260420T192322Z_metadata.xml",
+              "proc-config.yaml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095774_iw2/2026/04/20/20260420T192322/ga_s1a_nrb_1-0-0_T045-095774-IW2_20260420T192322Z_proc-config.yaml",
+              "stac-item.json": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095774_iw2/2026/04/20/20260420T192322/ga_s1a_nrb_1-0-0_T045-095774-IW2_20260420T192322Z_stac-item.json",
+              "thumbnail.png": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095774_iw2/2026/04/20/20260420T192322/ga_s1a_nrb_1-0-0_T045-095774-IW2_20260420T192322Z_thumbnail.png"
+            }
+          },
+          {
+            "burst_id": "t045_095775_iw2",
+            "datetime": "20260420T192325",
+            "scene_id": "S1A_IW_SLC__1SDV_20260420T192321_20260420T192348_064167_081391_D1D8",
+            "absolute_orbit": 64167,
+            "relative_orbit": 45,
+            "orbit_state": "descending",
+            "prefix": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095775_iw2/2026/04/20/20260420T192325/",
+            "assets": {
+              "VH-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095775_iw2/2026/04/20/20260420T192325/ga_s1a_nrb_1-0-0_T045-095775-IW2_20260420T192325Z_VH-gamma0.tif",
+              "VV-gamma0.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095775_iw2/2026/04/20/20260420T192325/ga_s1a_nrb_1-0-0_T045-095775-IW2_20260420T192325Z_VV-gamma0.tif",
+              "checksum.sha1": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095775_iw2/2026/04/20/20260420T192325/ga_s1a_nrb_1-0-0_T045-095775-IW2_20260420T192325Z_checksum.sha1",
+              "mask.tif": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095775_iw2/2026/04/20/20260420T192325/ga_s1a_nrb_1-0-0_T045-095775-IW2_20260420T192325Z_mask.tif",
+              "metadata.h5": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095775_iw2/2026/04/20/20260420T192325/ga_s1a_nrb_1-0-0_T045-095775-IW2_20260420T192325Z_metadata.h5",
+              "metadata.xml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095775_iw2/2026/04/20/20260420T192325/ga_s1a_nrb_1-0-0_T045-095775-IW2_20260420T192325Z_metadata.xml",
+              "proc-config.yaml": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095775_iw2/2026/04/20/20260420T192325/ga_s1a_nrb_1-0-0_T045-095775-IW2_20260420T192325Z_proc-config.yaml",
+              "stac-item.json": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095775_iw2/2026/04/20/20260420T192325/ga_s1a_nrb_1-0-0_T045-095775-IW2_20260420T192325Z_stac-item.json",
+              "thumbnail.png": "https://dea-public-data-dev.s3.ap-southeast-2.amazonaws.com/baseline/ga_s1_nrb_iw_vv_vh_1/t045_095775_iw2/2026/04/20/20260420T192325/ga_s1a_nrb_1-0-0_T045-095775-IW2_20260420T192325Z_thumbnail.png"
+            }
+          }
+        ],
+        "slc_scene_ids": [
+          "S1A_IW_SLC__1SDV_20260420T192256_20260420T192323_064167_081391_1104",
+          "S1A_IW_SLC__1SDV_20260420T192321_20260420T192348_064167_081391_D1D8"
+        ]
+      },
+      "sentinel1": {
+        "matched_to_ga": [
+          {
+            "slc_scene_id": "S1A_IW_SLC__1SDV_20260420T192256_20260420T192323_064167_081391_1104",
+            "slc_url": null,
+            "slc_note": "open SLC archive stops at 2022; use CDSE or ASF for this one",
+            "grd_twin": {
+              "scene_id": "S1A_IW_GRDH_1SDV_20260420T192256_20260420T192321_064167_081391_D3B4",
+              "start_time": "2026-04-20T19:22:56",
+              "relative_orbit": 45,
+              "url": "https://sentinel-s1-l1c.s3.eu-central-1.amazonaws.com/GRD/2026/4/20/IW/DV/S1A_IW_GRDH_1SDV_20260420T192256_20260420T192321_064167_081391_D3B4/",
+              "exact_twin": true,
+              "seconds_from_slc": 0
+            },
+            "grd_pass_slices": 16
+          },
+          {
+            "slc_scene_id": "S1A_IW_SLC__1SDV_20260420T192321_20260420T192348_064167_081391_D1D8",
+            "slc_url": null,
+            "slc_note": "open SLC archive stops at 2022; use CDSE or ASF for this one",
+            "grd_twin": {
+              "scene_id": "S1A_IW_GRDH_1SDV_20260420T192321_20260420T192346_064167_081391_A830",
+              "start_time": "2026-04-20T19:23:21",
+              "relative_orbit": 45,
+              "url": "https://sentinel-s1-l1c.s3.eu-central-1.amazonaws.com/GRD/2026/4/20/IW/DV/S1A_IW_GRDH_1SDV_20260420T192321_20260420T192346_064167_081391_A830/",
+              "exact_twin": true,
+              "seconds_from_slc": 0
+            },
+            "grd_pass_slices": 16
+          }
+        ],
+        "independent_grd": {
+          "relative_orbit": 45,
+          "window": [
+            "2026-08-17",
+            "2026-09-16"
+          ],
+          "scenes": [
+            {
+              "scene_id": "S1D_IW_GRDH_1SDV_20260825T192216_20260825T192241_004286_007E44_7DC4",
+              "acquired": "2026-08-25",
+              "start_time": "2026-08-25T19:22:16",
+              "absolute_orbit": 4286,
+              "relative_orbit": 45,
+              "mission": "S1D",
+              "url": "https://sentinel-s1-l1c.s3.eu-central-1.amazonaws.com/GRD/2026/8/25/IW/DV/S1D_IW_GRDH_1SDV_20260825T192216_20260825T192241_004286_007E44_7DC4/"
+            },
+            {
+              "scene_id": "S1D_IW_GRDH_1SDV_20260906T192217_20260906T192242_004461_00845F_8B97",
+              "acquired": "2026-09-06",
+              "start_time": "2026-09-06T19:22:17",
+              "absolute_orbit": 4461,
+              "relative_orbit": 45,
+              "mission": "S1D",
+              "url": "https://sentinel-s1-l1c.s3.eu-central-1.amazonaws.com/GRD/2026/9/6/IW/DV/S1D_IW_GRDH_1SDV_20260906T192217_20260906T192242_004461_00845F_8B97/"
+            }
+          ]
+        }
+      }
+    },
+    "bluemtns": {
+      "label": "Blue Mountains (Katoomba - Blackheath)",
+      "bbox": [
+        150.1,
+        -33.85,
+        150.6,
+        -33.45
+      ],
+      "centre": [
+        150.35,
+        -33.65
+      ],
+      "ga_nrb": {
+        "covered": false,
+        "product": "ga_s1_nrb_iw_vv_vh_1",
+        "bursts": [],
+        "acquisitions": [],
+        "slc_scene_ids": []
+      },
+      "sentinel1": {
+        "matched_to_ga": [],
+        "independent_grd": {
+          "relative_orbit": 147,
+          "window": [
+            "2026-08-17",
+            "2026-09-16"
+          ],
+          "scenes": [
+            {
+              "scene_id": "S1D_IW_GRDH_1SDV_20260820T191513_20260820T191538_004213_007BAD_97F2",
+              "acquired": "2026-08-20",
+              "start_time": "2026-08-20T19:15:13",
+              "absolute_orbit": 4213,
+              "relative_orbit": 147,
+              "mission": "S1D",
+              "url": "https://sentinel-s1-l1c.s3.eu-central-1.amazonaws.com/GRD/2026/8/20/IW/DV/S1D_IW_GRDH_1SDV_20260820T191513_20260820T191538_004213_007BAD_97F2/"
+            },
+            {
+              "scene_id": "S1D_IW_GRDH_1SDV_20260901T191513_20260901T191538_004388_0081D1_4D68",
+              "acquired": "2026-09-01",
+              "start_time": "2026-09-01T19:15:13",
+              "absolute_orbit": 4388,
+              "relative_orbit": 147,
+              "mission": "S1D",
+              "url": "https://sentinel-s1-l1c.s3.eu-central-1.amazonaws.com/GRD/2026/9/1/IW/DV/S1D_IW_GRDH_1SDV_20260901T191513_20260901T191538_004388_0081D1_4D68/"
+            },
+            {
+              "scene_id": "S1D_IW_GRDH_1SDV_20260913T191514_20260913T191539_004563_0087E8_AA07",
+              "acquired": "2026-09-13",
+              "start_time": "2026-09-13T19:15:14",
+              "absolute_orbit": 4563,
+              "relative_orbit": 147,
+              "mission": "S1D",
+              "url": "https://sentinel-s1-l1c.s3.eu-central-1.amazonaws.com/GRD/2026/9/13/IW/DV/S1D_IW_GRDH_1SDV_20260913T191514_20260913T191539_004563_0087E8_AA07/"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

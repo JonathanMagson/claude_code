@@ -76,6 +76,28 @@ the neighbouring A830 slice covers the remaining **8.4%**, and together they
 cover it completely. A burst near a slice edge needs both — which is why the
 manifest records how many slices the pass was cut into.
 
+## Level-1 coverage for all three areas
+
+GA's gap is not a Sentinel-1 gap. Scanning the GRD archive for 2026-08-17 to
+2026-09-16 finds current coverage over every AOI:
+
+| AOI | Relative orbit | Scenes in 30 days | Dates |
+| --- | --- | --- | --- |
+| Hunter | 147 | 3 | 2026-08-20, 09-01, 09-13 |
+| Pilliga | 45 | 2 | 2026-08-25, 09-06 |
+| Blue Mountains | 147 | 3 | 2026-08-20, 09-01, 09-13 |
+
+Hunter and the Blue Mountains sit on the **same pass** — identical absolute
+orbits (4213, 4388, 4563), adjacent slices a few seconds apart. Anything
+comparing those two areas is comparing them under identical viewing geometry
+on the same day, which is about as clean as a cross-site comparison gets.
+
+Every one of these is **Sentinel-1D**, which is the point of the fix below:
+before it, this table was empty.
+
+The full per-scene manifest, with bucket URLs, is in
+[`comparison_manifest.json`](./comparison_manifest.json).
+
 ## Getting the data
 
 ```bash
