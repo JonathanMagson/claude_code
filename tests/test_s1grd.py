@@ -231,3 +231,55 @@ def test_averaging_power_then_logging_is_not_the_same_as_averaging_decibels():
     correct = 10 * np.log10(_block_mean_power(power, coarse, fine)[0, 0])
     naive = float(np.mean(10 * np.log10(power)))
     assert correct > naive + 3.0
+
+
+# ---------------------------------------------------------------------------
+# GA Collection 0 / Collection 1 asset naming
+# ---------------------------------------------------------------------------
+
+import sys as _sys
+from pathlib import Path as _Path
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parent.parent / "tools"))
+
+
+def _assets(names):
+    return {"assets": {n: {"href": f"https://example/{n}.tif"} for n in names}}
+
+
+# Collection 0 spells these VV_gamma0/mask, Collection 1 spells the same layers
+# vv_gamma0/oa_layover_shadow_mask. A fetcher matching on the exact key silently
+# downloads nothing for one of the two.
+C0_KEYS = ["VV_gamma0", "VH_gamma0", "mask", "thumbnail", "number_of_looks"]
+C1_KEYS = ["vv_gamma0", "vh_gamma0", "oa_layover_shadow_mask", "thumbnail",
+           "oa_number_of_looks"]
+
+
+@pytest.mark.parametrize("keys", [C0_KEYS, C1_KEYS])
+def test_both_collections_resolve_to_the_same_asset_names(keys):
+    from fetch_ga_c0 import DEFAULT_ASSETS, select_assets
+
+    got = select_assets(_assets(keys), DEFAULT_ASSETS)
+    assert set(got) == {"vv_gamma0", "vh_gamma0", "mask"}
+
+
+def test_thumbnail_is_not_fetched_by_default():
+    from fetch_ga_c0 import DEFAULT_ASSETS, select_assets
+
+    assert "thumbnail" not in select_assets(_assets(C0_KEYS), DEFAULT_ASSETS)
+
+
+def test_static_layers_are_fetched_once_per_burst_not_per_date():
+    from fetch_ga_c0 import DEFAULT_ASSETS, plan
+
+    keys = C0_KEYS + ["gamma0_to_beta0_ratio", "gamma0_to_sigma0_ratio",
+                      "incidence_angle", "local_incidence_angle"]
+    items = [
+        dict(_assets(keys),
+             properties={"sarard:burst_id": "t009_019126_iw2",
+                         "datetime": f"2024-07-{day:02d}T19:12:34Z"})
+        for day in (3, 15, 27)
+    ]
+    jobs = plan(items, _Path("out"), DEFAULT_ASSETS, with_static=True)
+    statics = [j for j in jobs if "/static/" in j[1].as_posix()]
+    assert len(statics) == 5
