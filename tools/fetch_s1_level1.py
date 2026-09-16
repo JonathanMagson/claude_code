@@ -230,7 +230,10 @@ def session(username: Optional[str] = None, ca_bundle: Optional[Path] = None):
 
     # run() has already set the trust store up; do not redo it or say so twice.
     user, password, source = credentials(username)
-    print(f"  Earthdata user {user!r}, credentials from {source}", flush=True)
+    # The length is enough to spot a truncated or empty stored password
+    # without putting the secret itself on screen or in a log.
+    print(f"  Earthdata user {user!r} ({len(password)}-character password) "
+          f"from {source}", flush=True)
     try:
         return asf.ASFSession().auth_with_creds(user, password)
     except Exception as exc:
@@ -371,6 +374,18 @@ def annotation_only(product, dest: Path) -> List[Path]:
     return written
 
 
+def check_auth(username: Optional[str] = None,
+               ca_bundle: Optional[Path] = None) -> int:
+    """Authenticate and stop - a two-second test instead of a whole run."""
+    _require_asf()
+    note = use_system_certs(ca_bundle)
+    if note:
+        print(note)
+    session(username, ca_bundle)
+    print("\nauthentication succeeded")
+    return 0
+
+
 def run(
     manifest: Path,
     products: Sequence[str],
@@ -489,9 +504,13 @@ def main() -> int:
                     help="print every product ASF returns for each granule")
     ap.add_argument("--ca-bundle", type=Path, default=None,
                     help="PEM of your organisation's root CA, if TLS is inspected")
+    ap.add_argument("--check-auth", action="store_true",
+                    help="test the Earthdata login and exit, downloading nothing")
     args = ap.parse_args()
 
     try:
+        if args.check_auth:
+            return check_auth(args.username, args.ca_bundle)
         return run(args.manifest, args.products, args.username,
                    args.dry_run, args.annotation_only, args.debug, args.ca_bundle)
     except AuthError as exc:
