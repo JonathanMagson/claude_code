@@ -96,11 +96,68 @@ def credentials(username: Optional[str] = None) -> Tuple[str, str]:
     return user, password
 
 
-def session(username: Optional[str] = None):
+def use_system_certs(ca_bundle: Optional[Path] = None) -> str:
+    """Make Python trust what the operating system trusts.
+
+    On a network that inspects TLS, every request is re-signed by the
+    organisation's own root CA. Windows and macOS trust that CA because the
+    machine is managed; Python does not, because ``requests`` ships its own
+    ``certifi`` bundle and looks nowhere else. The result is
+    ``CERTIFICATE_VERIFY_FAILED: self-signed certificate in certificate
+    chain`` against a site that opens fine in a browser.
+
+    ``truststore`` redirects verification at the OS store, which is the correct
+    fix: the corporate CA is trusted because IT installed it, and every other
+    certificate is still verified normally. Turning verification off would
+    "work" too, and would hand anyone on the path the ability to serve
+    whatever they like - so it is not an option here.
+    """
+    if ca_bundle:
+        path = str(Path(ca_bundle).resolve())
+        os.environ["REQUESTS_CA_BUNDLE"] = path
+        os.environ["SSL_CERT_FILE"] = path
+        return f"using CA bundle {path}"
+    try:
+        import truststore
+
+        truststore.inject_into_ssl()
+        return "verifying against the system certificate store (truststore)"
+    except ImportError:
+        return ""
+
+
+TLS_HELP = """TLS verification failed - the certificate chain ends in one your
+Python does not trust. On a network that inspects HTTPS this is expected: the
+proxy re-signs traffic with your organisation's root CA, which Windows trusts
+and Python's bundled certifi does not.
+
+Fix it by having Python use the system trust store:
+
+    python -m pip install truststore
+
+then re-run. This script picks it up automatically.
+
+If that is unavailable, export your organisation's root CA to a .pem and pass
+it:
+
+    python tools/fetch_s1_level1.py --ca-bundle C:\\path\\to\\corporate-root.pem
+
+Do not disable certificate verification to get past this."""
+
+
+def session(username: Optional[str] = None, ca_bundle: Optional[Path] = None):
     import asf_search as asf
 
+    note = use_system_certs(ca_bundle)
+    if note:
+        print(f"  {note}", flush=True)
     user, password = credentials(username)
-    return asf.ASFSession().auth_with_creds(user, password)
+    try:
+        return asf.ASFSession().auth_with_creds(user, password)
+    except Exception as exc:
+        if "CERTIFICATE_VERIFY_FAILED" in str(exc) or "SSLError" in type(exc).__name__:
+            raise SystemExit(f"\n{TLS_HELP}\n\noriginal error: {exc}")
+        raise
 
 
 def product_bytes(product) -> int:
@@ -148,6 +205,8 @@ def lookup(scene_ids: Sequence[str], debug: bool = False) -> Dict[str, object]:
         try:
             results = asf.granule_search(batch)
         except Exception as exc:
+            if "CERTIFICATE_VERIFY_FAILED" in str(exc):
+                raise SystemExit(f"\n{TLS_HELP}\n\noriginal error: {exc}")
             print(f"  ASF query failed for {len(batch)} scene(s): {exc}", file=sys.stderr)
             continue
         for product in results:
@@ -238,8 +297,12 @@ def run(
     dry_run: bool = False,
     annotation: bool = False,
     debug: bool = False,
+    ca_bundle: Optional[Path] = None,
 ) -> int:
     _require_asf()
+    note = use_system_certs(ca_bundle)
+    if note:
+        print(note)
     if not manifest.exists():
         print(f"manifest not found: {manifest}\nrun tools/make_before_after.py first",
               file=sys.stderr)
@@ -291,7 +354,7 @@ def run(
             print("\n  re-run with --debug to see every product ASF returned per granule")
         return 0 if not missing else 1
 
-    asf_session = session(username)
+    asf_session = session(username, ca_bundle)
 
     # The same acquisition can serve two areas. Copy the local file rather than
     # pulling four gigabytes twice.
@@ -343,11 +406,13 @@ def main() -> int:
                     help="report sizes and destinations, download nothing")
     ap.add_argument("--debug", action="store_true",
                     help="print every product ASF returns for each granule")
+    ap.add_argument("--ca-bundle", type=Path, default=None,
+                    help="PEM of your organisation's root CA, if TLS is inspected")
     args = ap.parse_args()
 
     try:
         return run(args.manifest, args.products, args.username,
-                   args.dry_run, args.annotation_only, args.debug)
+                   args.dry_run, args.annotation_only, args.debug, args.ca_bundle)
     except AuthError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

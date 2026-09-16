@@ -615,3 +615,29 @@ def test_product_bytes_handles_the_ways_asf_reports_size():
     assert product_bytes(_asf_product(bytes=None)) == 0
     assert product_bytes(_asf_product()) == 0
     assert product_bytes(None) == 0
+
+
+def test_explicit_ca_bundle_is_exported_for_requests(tmp_path, monkeypatch):
+    # Both variables matter: requests reads REQUESTS_CA_BUNDLE, and anything
+    # going through plain ssl reads SSL_CERT_FILE.
+    from fetch_s1_level1 import use_system_certs
+
+    pem = tmp_path / "corporate-root.pem"
+    pem.write_text("-----BEGIN CERTIFICATE-----\n")
+    monkeypatch.delenv("REQUESTS_CA_BUNDLE", raising=False)
+    monkeypatch.delenv("SSL_CERT_FILE", raising=False)
+
+    note = use_system_certs(pem)
+    assert str(pem) in note
+    import os as _os
+    assert _os.environ["REQUESTS_CA_BUNDLE"] == str(pem.resolve())
+    assert _os.environ["SSL_CERT_FILE"] == str(pem.resolve())
+
+
+def test_tls_help_names_the_fix_and_refuses_the_shortcut():
+    from fetch_s1_level1 import TLS_HELP
+
+    assert "truststore" in TLS_HELP
+    assert "--ca-bundle" in TLS_HELP
+    # Disabling verification would make the error go away and is not a fix.
+    assert "Do not disable certificate verification" in TLS_HELP
