@@ -13,3 +13,6 @@ htmlcov/
 # Working output directory. Committed examples live in docs/example-outputs/.
 outputs/
 *.npz
+
+# Third-party reference repos cloned for reading (each has its own .git).
+external/
