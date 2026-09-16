@@ -549,13 +549,42 @@ def test_level1_product_selection_is_honoured(tmp_path):
     assert [j["kind"] for j in read_manifest(path, ["grd"])] == ["grd"]
 
 
-def test_earthdata_credentials_come_from_the_environment(monkeypatch):
+def test_earthdata_credentials_come_from_the_environment(monkeypatch, tmp_path):
     from fetch_s1_level1 import credentials
 
     monkeypatch.setenv("EARTHDATA_USERNAME", "user")
     monkeypatch.setenv("EARTHDATA_PASSWORD", "secret")
-    monkeypatch.setenv("HOME", "/nonexistent")
-    assert credentials() == ("user", "secret")
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    user, password, source = credentials()
+    assert (user, password) == ("user", "secret")
+    assert "EARTHDATA_USERNAME" in source
+
+
+def test_windows_style_netrc_is_read_too(monkeypatch, tmp_path):
+    # Windows tooling writes _netrc, not .netrc; missing it sends the user
+    # hunting for credentials the script could have found.
+    from fetch_s1_level1 import EARTHDATA_HOST, credentials
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    monkeypatch.delenv("EARTHDATA_USERNAME", raising=False)
+    monkeypatch.delenv("EARTHDATA_PASSWORD", raising=False)
+    (tmp_path / "_netrc").write_text(
+        f"machine {EARTHDATA_HOST} login jdoe password s3cret\n"
+    )
+    user, password, source = credentials()
+    assert (user, password) == ("jdoe", "s3cret")
+    assert "_netrc" in source
+
+
+def test_auth_help_covers_the_usual_causes():
+    from fetch_s1_level1 import AUTH_HELP
+
+    # The email-instead-of-username mistake fails identically to a wrong
+    # password, so it has to be named explicitly.
+    assert "not the email address" in AUTH_HELP
+    assert "--username" in AUTH_HELP
 
 
 def test_missing_credentials_raise_with_a_usable_message(monkeypatch):
@@ -564,6 +593,7 @@ def test_missing_credentials_raise_with_a_usable_message(monkeypatch):
     monkeypatch.delenv("EARTHDATA_USERNAME", raising=False)
     monkeypatch.delenv("EARTHDATA_PASSWORD", raising=False)
     monkeypatch.setenv("HOME", "/nonexistent")
+    monkeypatch.setenv("USERPROFILE", "/nonexistent")
     with pytest.raises(AuthError) as excinfo:
         credentials()
     assert "urs.earthdata.nasa.gov" in str(excinfo.value)

@@ -63,37 +63,73 @@ def _require_asf():
         )
 
 
-def credentials(username: Optional[str] = None) -> Tuple[str, str]:
-    """Earthdata credentials from .netrc, the environment, or a prompt."""
-    if username is None:
-        try:
-            import netrc
+def netrc_files() -> List[Path]:
+    """Where a netrc might live, including the name Windows tools use."""
+    home = Path.home()
+    return [home / ".netrc", home / "_netrc"]
 
-            auth = netrc.netrc().authenticators(EARTHDATA_HOST)
+
+def credentials(username: Optional[str] = None) -> Tuple[str, str, str]:
+    """Earthdata credentials, with the source they came from.
+
+    The source matters when a login is rejected: a stale password in a netrc
+    file that was written years ago fails in exactly the same way as a typo,
+    and without knowing which one was used there is nothing to check.
+    """
+    if username is None:
+        for path in netrc_files():
+            if not path.exists():
+                continue
+            try:
+                import netrc
+
+                auth = netrc.netrc(str(path)).authenticators(EARTHDATA_HOST)
+            except Exception as exc:
+                print(f"  could not read {path}: {exc}", file=sys.stderr)
+                continue
             if auth and auth[0] and auth[2]:
-                return auth[0], auth[2]
-        except Exception:
-            pass
+                return auth[0], auth[2], f"{path} (machine {EARTHDATA_HOST})"
 
         env_user = os.environ.get("EARTHDATA_USERNAME")
         env_pass = os.environ.get("EARTHDATA_PASSWORD")
         if env_user and env_pass:
-            return env_user, env_pass
+            return env_user, env_pass, "EARTHDATA_USERNAME / EARTHDATA_PASSWORD"
 
     user = username or os.environ.get("EARTHDATA_USERNAME")
     if not user:
         raise AuthError(
-            f"no Earthdata credentials found.\n"
-            f"  add a ~/.netrc entry for {EARTHDATA_HOST}, or set "
-            "EARTHDATA_USERNAME / EARTHDATA_PASSWORD, or pass --username.\n"
+            "no Earthdata credentials found.\n"
+            f"  add a netrc entry for {EARTHDATA_HOST} ({' or '.join(str(p) for p in netrc_files())}),\n"
+            "  or set EARTHDATA_USERNAME / EARTHDATA_PASSWORD, or pass --username.\n"
             "  register free at https://urs.earthdata.nasa.gov/"
         )
     password = os.environ.get("EARTHDATA_PASSWORD")
-    if not password:
-        import getpass
+    if password:
+        return user, password, "--username with EARTHDATA_PASSWORD"
 
-        password = getpass.getpass(f"Earthdata password for {user}: ")
-    return user, password
+    import getpass
+
+    password = getpass.getpass(f"Earthdata password for {user}: ")
+    return user, password, "typed at the prompt"
+
+
+AUTH_HELP = """Earthdata rejected the login.
+
+Three things account for most of these:
+
+1. The username is not the email address. Earthdata logins have a separate
+   username, and signing in with the email fails exactly like a wrong
+   password. Check yours at https://urs.earthdata.nasa.gov/profile
+2. The credentials came from a file you had forgotten about - the source is
+   printed above. A netrc entry written for an older password fails silently
+   in this way.
+3. The account exists but has never accepted ASF's licence agreement. Sign in
+   once at https://search.asf.alaska.edu/ and download anything by hand; that
+   clears it.
+
+To try a different account without editing anything:
+
+    python tools/fetch_s1_level1.py --products grd --username YOUR_USERNAME"""
 
 
 def use_system_certs(ca_bundle: Optional[Path] = None) -> str:
@@ -193,12 +229,15 @@ def session(username: Optional[str] = None, ca_bundle: Optional[Path] = None):
     import asf_search as asf
 
     # run() has already set the trust store up; do not redo it or say so twice.
-    user, password = credentials(username)
+    user, password, source = credentials(username)
+    print(f"  Earthdata user {user!r}, credentials from {source}", flush=True)
     try:
         return asf.ASFSession().auth_with_creds(user, password)
     except Exception as exc:
         if "CERTIFICATE_VERIFY_FAILED" in str(exc) or "SSLError" in type(exc).__name__:
             raise SystemExit(f"\n{TLS_HELP}\n\noriginal error: {exc}")
+        if "ASFAuthenticationError" in type(exc).__name__ or "incorrect" in str(exc).lower():
+            raise SystemExit(f"\n{AUTH_HELP}\n\noriginal error: {exc}")
         raise
 
 
