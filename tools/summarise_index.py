@@ -75,10 +75,30 @@ def summarise(rows: Sequence[dict], show_bursts: bool = False) -> None:
     if len(unmatched) > 10:
         print(f"  ... +{len(unmatched) - 10} more")
 
-    # A burst whose pass was cut into several slices may straddle two of them.
-    seam = [r for r in rows if _int(r.get("grd_slice_count")) > 1]
-    print(f"\nbursts whose pass has >1 GRD slice: {len(seam)} of {len(rows)}"
-          "  (grd_all_slices lists them; a burst on the seam needs both)")
+    # Every IW pass is cut into a dozen or more slices, so "the pass has more
+    # than one slice" is true of everything and says nothing about any burst.
+    # Report the distribution instead, and be explicit that identifying the
+    # bursts actually sitting on a seam needs footprint intersection, which
+    # this index does not carry.
+    per_pass = Counter(_int(r.get("grd_slice_count")) for r in rows
+                       if _int(r.get("grd_slice_count")))
+    if per_pass:
+        spread = ", ".join(f"{n} slices x{c} burst-rows" for n, c in sorted(per_pass.items()))
+        print(f"\nGRD slices per pass: {spread}")
+        print("  every pass is sliced, so this is about the pass, not the burst;")
+        print("  grd_all_slices lists them all, and a burst near a slice edge needs two.")
+
+    # Areas on one track can genuinely share a burst.
+    burst_areas = defaultdict(set)
+    for row in rows:
+        if row.get("ga_burst_id"):
+            burst_areas[row["ga_burst_id"]].add(row.get("aoi", "?"))
+    shared = {b: a for b, a in burst_areas.items() if len(a) > 1}
+    print(f"\nbursts shared between areas: {len(shared)} of {len(burst_areas)}")
+    for burst, areas in sorted(shared.items())[:10]:
+        print(f"  {burst}  {' + '.join(sorted(areas))}")
+    if len(shared) > 10:
+        print(f"  ... +{len(shared) - 10} more")
 
     # --- slice-boundary areas --------------------------------------------
     print("\nSLCs needed per date:")
