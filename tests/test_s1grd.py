@@ -383,3 +383,26 @@ def test_scene_pairs_skip_bursts_with_no_slc():
     from ga_l1_index import scene_pairs
 
     assert scene_pairs([{"slc_scene_id": "", "grd_scene_id": ""}]) == []
+
+
+def test_repeat_gaps_finds_the_twelve_day_cycle():
+    from summarise_index import _repeat_gaps
+
+    dates = ["2024-06-03", "2024-06-15", "2024-06-27", "2024-07-09"]
+    assert _repeat_gaps(dates).most_common(1) == [(12, 3)]
+
+
+def test_repeat_gaps_ignores_unparseable_dates():
+    from summarise_index import _repeat_gaps
+
+    assert _repeat_gaps(["2024-06-03", "", "2024-06-15"]).most_common(1) == [(12, 1)]
+
+
+def test_int_coercion_treats_blanks_as_zero():
+    # grd_slice_count is blank for an unmatched row; the seam count must not
+    # blow up on it.
+    from summarise_index import _int
+
+    assert _int("2") == 2
+    assert _int("") == 0
+    assert _int(None) == 0
