@@ -567,3 +567,51 @@ def test_missing_credentials_raise_with_a_usable_message(monkeypatch):
     with pytest.raises(AuthError) as excinfo:
         credentials()
     assert "urs.earthdata.nasa.gov" in str(excinfo.value)
+
+
+def _asf_product(**props):
+    class _P:
+        def __init__(self, properties):
+            self.properties = properties
+
+    return _P(props)
+
+
+def test_metadata_companion_is_not_mistaken_for_the_data_product():
+    # An ASF granule carries both the archive and a small metadata record under
+    # one sceneName. Keying on the name alone lets the metadata record win and
+    # a 9 MB XML stands in for a 4 GB SLC.
+    from fetch_s1_level1 import _is_metadata
+
+    data = _asf_product(processingLevel="SLC", url="https://x/S1A.zip")
+    meta = _asf_product(processingLevel="METADATA_SLC", url="https://x/S1A.iso.xml")
+    assert not _is_metadata(data)
+    assert _is_metadata(meta)
+
+
+def test_lookup_keeps_the_data_product_when_metadata_arrives_last(monkeypatch):
+    import sys as _sys
+    import types as _types
+
+    data = _asf_product(sceneName="SLC_X", processingLevel="SLC",
+                        bytes=4_100_000_000, url="https://x/SLC_X.zip")
+    meta = _asf_product(sceneName="SLC_X", processingLevel="METADATA_SLC",
+                        bytes=9_000_000, url="https://x/SLC_X.iso.xml")
+    stub = _types.ModuleType("asf_search")
+    stub.granule_search = lambda batch: [data, meta]  # metadata last
+    monkeypatch.setitem(_sys.modules, "asf_search", stub)
+
+    from fetch_s1_level1 import lookup, product_bytes
+
+    assert product_bytes(lookup(["SLC_X"])["SLC_X"]) == 4_100_000_000
+
+
+def test_product_bytes_handles_the_ways_asf_reports_size():
+    from fetch_s1_level1 import product_bytes
+
+    assert product_bytes(_asf_product(bytes=1_000)) == 1_000
+    assert product_bytes(_asf_product(bytes="1000")) == 1_000
+    assert product_bytes(_asf_product(sizeMB=4_100)) == 4_100_000_000
+    assert product_bytes(_asf_product(bytes=None)) == 0
+    assert product_bytes(_asf_product()) == 0
+    assert product_bytes(None) == 0

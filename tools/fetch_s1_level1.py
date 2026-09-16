@@ -103,11 +103,44 @@ def session(username: Optional[str] = None):
     return asf.ASFSession().auth_with_creds(user, password)
 
 
-def lookup(scene_ids: Sequence[str]) -> Dict[str, object]:
-    """ASF product records for a list of scene ids, keyed by scene name."""
+def product_bytes(product) -> int:
+    """Size of a product in bytes, tolerating the ways ASF reports it."""
+    props = (product.properties or {}) if product is not None else {}
+    for key in ("bytes", "sizeMB", "fileSize"):
+        value = props.get(key)
+        if value in (None, "", 0):
+            continue
+        try:
+            size = float(value)
+        except (TypeError, ValueError):
+            continue
+        return int(size * 1_000_000) if key == "sizeMB" else int(size)
+    return 0
+
+
+def _is_metadata(product) -> bool:
+    """True for ASF's metadata-only companion products.
+
+    A granule has more than one product under the same ``sceneName`` - the
+    data archive and a small metadata record. They are indistinguishable by
+    name, so keying on the name alone silently picks whichever came last, and
+    a few-megabyte XML stands in for a four-gigabyte SLC.
+    """
+    props = (product.properties or {}) if product is not None else {}
+    level = str(props.get("processingLevel", "")).upper()
+    url = str(props.get("url", "")).lower()
+    return level.startswith("METADATA") or url.endswith((".iso.xml", ".xml", ".png"))
+
+
+def lookup(scene_ids: Sequence[str], debug: bool = False) -> Dict[str, object]:
+    """ASF data products for a list of scene ids, keyed by scene name.
+
+    Where a granule has several products, the metadata companions are dropped
+    and the largest remaining one is kept - that is the archive to download.
+    """
     import asf_search as asf
 
-    found: Dict[str, object] = {}
+    candidates: Dict[str, List[object]] = {}
     # granule_search takes the full list, but a single bad id can empty the
     # response, so ask in small batches and keep what comes back.
     for start in range(0, len(scene_ids), 20):
@@ -120,7 +153,20 @@ def lookup(scene_ids: Sequence[str]) -> Dict[str, object]:
         for product in results:
             name = (product.properties or {}).get("sceneName", "")
             if name:
-                found[name] = product
+                candidates.setdefault(name, []).append(product)
+
+    found: Dict[str, object] = {}
+    for name, products in candidates.items():
+        if debug:
+            print(f"\n  {name}: {len(products)} ASF product(s)")
+            for product in products:
+                props = product.properties or {}
+                print(f"    level={props.get('processingLevel')!r:<18}"
+                      f"bytes={product_bytes(product):>14,}  "
+                      f"{'METADATA' if _is_metadata(product) else 'data':<9}"
+                      f"{str(props.get('url'))[-60:]}")
+        data = [p for p in products if not _is_metadata(p)] or products
+        found[name] = max(data, key=product_bytes)
     return found
 
 
@@ -191,6 +237,7 @@ def run(
     username: Optional[str] = None,
     dry_run: bool = False,
     annotation: bool = False,
+    debug: bool = False,
 ) -> int:
     _require_asf()
     if not manifest.exists():
@@ -206,7 +253,7 @@ def run(
     scenes = sorted({j["scene"] for j in jobs})
     print(f"{len(jobs)} download(s), {len(scenes)} distinct scene(s)")
     print("querying ASF...", flush=True)
-    records = lookup(scenes)
+    records = lookup(scenes, debug=debug)
 
     missing = [s for s in scenes if s not in records]
     if missing:
@@ -215,22 +262,33 @@ def run(
             print(f"  {scene}", file=sys.stderr)
 
     total = 0
+    estimated = 0
     for job in jobs:
-        product = records.get(job["scene"])
-        size = int((product.properties or {}).get("bytes", 0)) if product else 0
-        total += size or TYPICAL_BYTES.get(job["kind"], 0)
+        size = product_bytes(records.get(job["scene"]))
+        if not size:
+            size = TYPICAL_BYTES.get(job["kind"], 0)
+            estimated += 1
+        total += size
 
     print(f"\ntotal to download: {total / 1e9:.1f} GB"
+          + (f"  ({estimated} size(s) estimated, ASF reported none)" if estimated else "")
           + ("  (annotation only, so far less in practice)" if annotation else ""))
 
     if dry_run:
         print()
         for job in jobs:
             product = records.get(job["scene"])
-            size = int((product.properties or {}).get("bytes", 0)) if product else 0
-            state = "missing at ASF" if product is None else f"{size / 1e9:5.2f} GB"
+            size = product_bytes(product)
+            if product is None:
+                state = "missing at ASF"
+            elif size:
+                state = f"{size / 1e9:5.2f} GB"
+            else:
+                state = "size unknown"
             print(f"  {job['aoi']:<10}{job['role']:<7}{job['kind'].upper():<5}"
                   f"{state:>16}  -> {job['dest']}")
+        if estimated:
+            print("\n  re-run with --debug to see every product ASF returned per granule")
         return 0 if not missing else 1
 
     asf_session = session(username)
@@ -283,11 +341,13 @@ def main() -> int:
                     help="fetch manifest.safe and annotation XML instead of the zip")
     ap.add_argument("--dry-run", action="store_true",
                     help="report sizes and destinations, download nothing")
+    ap.add_argument("--debug", action="store_true",
+                    help="print every product ASF returns for each granule")
     args = ap.parse_args()
 
     try:
         return run(args.manifest, args.products, args.username,
-                   args.dry_run, args.annotation_only)
+                   args.dry_run, args.annotation_only, args.debug)
     except AuthError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
