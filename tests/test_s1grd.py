@@ -302,4 +302,6 @@ def test_static_asset_selection_can_be_narrowed():
                     ["local_incidence_angle"])
     statics = [j for j in narrowed if "/static/" in j[1].as_posix()]
     assert len(statics) == 1
-    assert "local-incidence-angle" in statics[0][0]
+    # GA's filenames hyphenate where the asset key underscores, so normalise
+    # before asserting which layer came back.
+    assert "local_incidence_angle" in statics[0][0].replace("-", "_")
