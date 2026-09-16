@@ -283,3 +283,23 @@ def test_static_layers_are_fetched_once_per_burst_not_per_date():
     jobs = plan(items, _Path("out"), DEFAULT_ASSETS, with_static=True)
     statics = [j for j in jobs if "/static/" in j[1].as_posix()]
     assert len(statics) == 5
+
+
+def test_static_asset_selection_can_be_narrowed():
+    # All five geometry layers are ~193 MB per burst; local incidence angle
+    # alone is ~46 MB and is the one that explains a terrain-correction
+    # difference, so narrowing has to actually narrow.
+    from fetch_ga_c0 import DEFAULT_ASSETS, plan
+
+    keys = C0_KEYS + ["gamma0_to_beta0_ratio", "gamma0_to_sigma0_ratio",
+                      "incidence_angle", "local_incidence_angle"]
+    items = [
+        dict(_assets(keys),
+             properties={"sarard:burst_id": "t009_019126_iw2",
+                         "datetime": "2024-07-03T08:40:00Z"})
+    ]
+    narrowed = plan(items, _Path("out"), DEFAULT_ASSETS, True,
+                    ["local_incidence_angle"])
+    statics = [j for j in narrowed if "/static/" in j[1].as_posix()]
+    assert len(statics) == 1
+    assert "local-incidence-angle" in statics[0][0]

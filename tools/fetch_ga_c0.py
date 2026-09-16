@@ -98,6 +98,7 @@ def plan(
     out: Path,
     assets: Sequence[str],
     with_static: bool,
+    static_assets: Sequence[str] = STATIC_ASSETS,
 ) -> List[Tuple[str, Path]]:
     """Every (url, destination) to fetch, statics deduplicated per burst."""
     jobs: List[Tuple[str, Path]] = []
@@ -110,9 +111,30 @@ def plan(
             jobs.append((href, out / burst / stamp / href.split("/")[-1]))
         if with_static and burst not in static_done:
             static_done.add(burst)
-            for _norm, href in sorted(select_assets(item, STATIC_ASSETS).items()):
+            for _norm, href in sorted(select_assets(item, static_assets).items()):
                 jobs.append((href, out / burst / "static" / href.split("/")[-1]))
     return jobs
+
+
+def _content_length(url: str, timeout: float = 30.0) -> int:
+    """Size of an asset without fetching it."""
+    request = urllib.request.Request(url, method="HEAD")
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as r:
+            return int(r.headers.get("Content-Length") or 0)
+    except Exception:
+        return 0
+
+
+def measure(jobs: Sequence[Tuple[str, Path]], workers: int = 16) -> int:
+    """Total download size, from HEAD requests.
+
+    Worth knowing before committing: the static layers are ~193 MB per burst
+    against ~33 MB for a burst-date of VV+VH, so a request that looks small in
+    file count can be dominated by geometry layers that never change.
+    """
+    with futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        return sum(pool.map(lambda j: _content_length(j[0]), jobs))
 
 
 def fetch(
@@ -124,6 +146,8 @@ def fetch(
     dates: Optional[int] = None,
     assets: Sequence[str] = DEFAULT_ASSETS,
     with_static: bool = False,
+    static_assets: Sequence[str] = STATIC_ASSETS,
+    max_bursts: Optional[int] = None,
     catalog: str = CATALOG,
     workers: int = 8,
     dry_run: bool = False,
@@ -146,16 +170,32 @@ def fetch(
         chosen = chosen[:dates]
     picked = [i for d in chosen for i in by_date[d]]
 
-    print(f"{aoi_name}: {len(items)} items over {len(by_date)} dates; "
-          f"taking {len(picked)} items over {len(chosen)} dates", flush=True)
+    if max_bursts is not None:
+        keep = sorted({i.get("properties", {}).get("sarard:burst_id") for i in picked})
+        keep = set(k for k in keep if k)
+        keep = set(sorted(keep)[:max_bursts])
+        picked = [i for i in picked
+                  if i.get("properties", {}).get("sarard:burst_id") in keep]
 
-    jobs = plan(picked, out, assets, with_static)
+    bursts = {i.get("properties", {}).get("sarard:burst_id") for i in picked}
+    print(f"{aoi_name}: {len(items)} items over {len(by_date)} dates; "
+          f"taking {len(picked)} items over {len(chosen)} dates "
+          f"across {len(bursts)} burst(s)", flush=True)
+
+    jobs = plan(picked, out, assets, with_static, static_assets)
     print(f"{len(jobs)} file(s) -> {out}", flush=True)
     if dry_run:
-        for url, dest in jobs[:20]:
+        for _url, dest in jobs[:12]:
             print(f"  would fetch {dest.relative_to(out)}")
-        if len(jobs) > 20:
-            print(f"  ... +{len(jobs) - 20} more")
+        if len(jobs) > 12:
+            print(f"  ... +{len(jobs) - 12} more")
+        print("  measuring...", flush=True)
+        total = measure(jobs)
+        statics = [j for j in jobs if "/static/" in j[1].as_posix()]
+        static_bytes = measure(statics) if statics else 0
+        print(f"\n  TOTAL {total / 1e9:.2f} GB"
+              f"  ({static_bytes / 1e9:.2f} GB of that is static layers,"
+              f" fetched once per burst and reusable across every date)")
         return []
 
     written: List[Path] = []
@@ -180,7 +220,12 @@ def main() -> int:
                     help="only the first N dates in the window")
     ap.add_argument("--assets", nargs="*", default=list(DEFAULT_ASSETS))
     ap.add_argument("--with-static", action="store_true",
-                    help="also fetch the per-burst geometry layers")
+                    help="also fetch the per-burst geometry layers (~193 MB per burst for all five)")
+    ap.add_argument("--static-assets", nargs="*", default=list(STATIC_ASSETS),
+                    help="which geometry layers; local_incidence_angle alone is "
+                         "enough to explain a terrain-correction difference")
+    ap.add_argument("--max-bursts", type=int, default=None,
+                    help="only the first N bursts, for a pilot download")
     ap.add_argument("--out", type=Path, default=Path("data/ga_c0"))
     ap.add_argument("--catalog", default=CATALOG)
     ap.add_argument("--dry-run", action="store_true",
@@ -190,6 +235,7 @@ def main() -> int:
     try:
         fetch(args.aoi, args.out, track=args.track, start=args.start, end=args.end,
               dates=args.dates, assets=args.assets, with_static=args.with_static,
+              static_assets=args.static_assets, max_bursts=args.max_bursts,
               catalog=args.catalog, dry_run=args.dry_run)
     except (CatalogUnreachable, ImportError) as exc:
         print(f"error: {exc}", file=sys.stderr)
