@@ -305,3 +305,81 @@ def test_static_asset_selection_can_be_narrowed():
     # GA's filenames hyphenate where the asset key underscores, so normalise
     # before asserting which layer came back.
     assert "local_incidence_angle" in statics[0][0].replace("-", "_")
+
+
+# ---------------------------------------------------------------------------
+# GA burst id -> ESA burst id
+# ---------------------------------------------------------------------------
+
+
+def test_burst_id_decomposes_to_track_esa_burst_and_swath():
+    # GA's t009_019126_iw2 is track 9, ESA burst 19126, IW2. The middle field
+    # is the ESA burst id: the OPERA database holds 1,127,661 IW rows over
+    # 375,887 distinct middle values, three sub-swath rows each, which is
+    # exactly ESA's IW burst-id space.
+    from ga_l1_index import decompose_burst
+
+    assert decompose_burst("t009_019126_iw2") == {
+        "track": 9, "esa_burst_id": 19126, "subswath": "IW2"
+    }
+    assert decompose_burst("t045_095772_iw3")["esa_burst_id"] == 95772
+
+
+def test_burst_id_decomposition_survives_rubbish():
+    from ga_l1_index import decompose_burst
+
+    assert decompose_burst("rubbish")["track"] == ""
+    assert decompose_burst("")["esa_burst_id"] == ""
+
+
+def test_index_writes_one_row_per_burst_and_deduplicates_scene_lists(tmp_path):
+    from ga_l1_index import FIELDS, write_outputs
+
+    slc = "S1A_IW_SLC__1SDV_20260420T192256_20260420T192323_064167_081391_1104"
+    grd = "S1A_IW_GRDH_1SDV_20260420T192256_20260420T192321_064167_081391_D3B4"
+    rows = [
+        {"aoi": "pilliga", "ga_burst_id": b, "esa_burst_id": 0, "track": 45,
+         "subswath": "IW2", "acquired": "2026-04-20", "datetime": "", "ga_item_id": "",
+         "ga_collection": "", "platform": "", "absolute_orbit": "", "datatake": "",
+         "orbit_state": "", "slc_scene_id": slc, "grd_scene_id": grd,
+         "grd_slice_count": 2, "grd_all_slices": f"{grd}|other"}
+        for b in ("t045_095772_iw2", "t045_095773_iw1", "t045_095774_iw1")
+    ]
+    paths = write_outputs(rows, tmp_path)
+
+    body = paths["csv"].read_text().strip().splitlines()
+    assert body[0] == ",".join(FIELDS)
+    assert len(body) == 4  # header + three bursts
+
+    # three bursts, one shared acquisition: the scene lists must collapse
+    assert paths["slc"].read_text().strip().splitlines() == [slc]
+    assert paths["grd"].read_text().strip().splitlines() == [grd]
+    assert paths["grd_all"].read_text().strip().splitlines() == [grd, "other"]
+
+
+def test_scene_pairs_collapse_many_bursts_to_one_acquisition():
+    # The burst table repeats a pairing once per burst; the scene table is the
+    # SLC-to-GRD list on its own, which is what you want when the question is
+    # about Level-1 products rather than GA ones.
+    from ga_l1_index import PAIR_FIELDS, scene_pairs
+
+    slc = "S1A_IW_SLC__1SDV_20260420T192256_20260420T192323_064167_081391_1104"
+    grd = "S1A_IW_GRDH_1SDV_20260420T192256_20260420T192321_064167_081391_D3B4"
+    rows = [
+        {"aoi": aoi, "slc_scene_id": slc, "grd_scene_id": grd, "acquired": "2026-04-20",
+         "grd_slice_count": 2, "grd_all_slices": f"{grd}|other", "platform": "Sentinel-1A",
+         "absolute_orbit": 64167, "datatake": "081391", "track": 45,
+         "orbit_state": "descending"}
+        for aoi in ("pilliga", "pilliga", "hunter")
+    ]
+    pairs = scene_pairs(rows)
+    assert len(pairs) == 1
+    assert pairs[0]["ga_burst_count"] == 3
+    assert pairs[0]["aois"] == "hunter|pilliga"
+    assert set(PAIR_FIELDS) >= set(pairs[0])
+
+
+def test_scene_pairs_skip_bursts_with_no_slc():
+    from ga_l1_index import scene_pairs
+
+    assert scene_pairs([{"slc_scene_id": "", "grd_scene_id": ""}]) == []
