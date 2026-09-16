@@ -454,3 +454,38 @@ def test_before_after_needs_two_dates():
 
     with pytest.raises(SystemExit):
         pick_pair([_ba_item("a", "2024-06-03")])
+
+
+# ---------------------------------------------------------------------------
+# raster checking
+# ---------------------------------------------------------------------------
+
+
+def test_raster_scan_groups_by_folder_and_recognises_both_spellings(tmp_path):
+    # Collection 0 hyphenates (VV-gamma0), Collection 1 underscores, and the
+    # scan has to see both or a whole collection reports as having no bands.
+    from check_rasters import scan
+
+    acq = tmp_path / "hunter" / "t009_019128_iw3" / "20240603"
+    acq.mkdir(parents=True)
+    (acq / "ga_s1a_nrb_0-1-0_T009_20240603Z_VV-gamma0.tif").touch()
+    (acq / "ga_s1a_nrb_0-1-0_T009_20240603Z_VH-gamma0.tif").touch()
+    (acq / "ga_s1a_nrb_0-1-0_T009_20240603Z_mask.tif").touch()
+    static = tmp_path / "hunter" / "t009_019128_iw3" / "static"
+    static.mkdir()
+    (static / "ga_s1_nrb-static_0-1-0_T009_local-incidence-angle.tif").touch()
+
+    groups = scan(tmp_path)
+    acq_key = ("hunter", "t009_019128_iw3", "20240603")
+    assert set(groups[acq_key]) == {"vv", "vh", "mask"}
+    assert set(groups[("hunter", "t009_019128_iw3", "static")]) == {"lia"}
+
+
+def test_raster_scan_reads_collection_1_underscored_names(tmp_path):
+    from check_rasters import scan
+
+    acq = tmp_path / "burst" / "date"
+    acq.mkdir(parents=True)
+    (acq / "x_vv_gamma0.tif").touch()
+    (acq / "x_mask.tif").touch()
+    assert set(scan(tmp_path)[("burst", "date")]) == {"vv", "mask"}
