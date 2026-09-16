@@ -52,6 +52,46 @@ def test_relative_orbit_rejects_a_non_scene():
         relative_orbit("not-a-scene")
 
 
+# Each satellite has its own offset from absolute to relative orbit, and they
+# are not interchangeable: using S1A's for S1C puts the track out by 99. These
+# cases are anchored on acquisitions whose relative orbit is stated
+# independently - Geoscience Australia's NRB metadata for S1A/S1B/S1C, and
+# footprint-against-burst-database matching for S1D.
+@pytest.mark.parametrize(
+    "scene,expected",
+    [
+        ("S1A_IW_GRDH_1SDV_20260420T192256_20260420T192321_064167_081391_D3B4", 45),
+        ("S1A_IW_GRDH_1SDV_20240805T200431_20240805T200458_055082_06B621_601A", 60),
+        ("S1B_IW_GRDH_1SDV_20200101T192312_20200101T192337_025010_05E2AA_6EBE", 134),
+        ("S1C_IW_GRDH_1SDV_20260415T213909_20260415T213940_007232_00EA8A_0AE3", 61),
+        ("S1D_IW_GRDH_1SDV_20260906T191917_20260906T191947_004461_008100_ABCD", 45),
+        ("S1D_IW_GRDH_1SDV_20260908T190441_20260908T190510_004490_008100_ABCD", 74),
+    ],
+)
+def test_relative_orbit_is_right_for_every_satellite(scene, expected):
+    assert relative_orbit(scene) == expected
+
+
+def test_sentinel_1d_scenes_are_not_silently_dropped():
+    # S1D carries most of the recent archive; a parser that only knows A/B/C
+    # returns None here and the scene vanishes from every search.
+    prefix = (
+        "GRD/2026/9/6/IW/DV/"
+        "S1D_IW_GRDH_1SDV_20260906T191917_20260906T191947_004461_008100_ABCD/"
+    )
+    scene = _scene_from_prefix(prefix)
+    assert scene is not None
+    assert scene.mission == "S1D"
+    assert scene.relative_orbit == 45
+
+
+def test_an_unknown_satellite_raises_rather_than_guessing():
+    with pytest.raises(ValueError):
+        relative_orbit(
+            "S1E_IW_GRDH_1SDV_20260906T191917_20260906T191947_004461_008100_ABCD"
+        )
+
+
 def test_scene_parsed_from_its_prefix():
     scene = _scene_from_prefix(SCENE)
     assert scene is not None

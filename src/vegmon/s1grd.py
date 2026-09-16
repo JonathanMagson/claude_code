@@ -60,12 +60,16 @@ _S3_NS = "{http://s3.amazonaws.com/doc/2006-03-01/}"
 REPEAT_DAYS = 12
 
 #: Cycle length in relative orbits, and the mission-specific offsets that turn
-#: an absolute orbit number into a relative one.
+#: an absolute orbit number into a relative one. The offsets are per-satellite
+#: and not guessable from each other: each was checked against acquisitions
+#: whose relative orbit is stated independently (Geoscience Australia's NRB
+#: metadata for S1A/S1B/S1C, and footprint-to-burst-database matching for
+#: S1D, which no published NRB covers yet).
 _CYCLE = 175
-_ORBIT_OFFSET = {"S1A": 73, "S1B": 27, "S1C": 73}
+_ORBIT_OFFSET = {"S1A": 73, "S1B": 27, "S1C": 172, "S1D": 42}
 
 _SCENE_RE = re.compile(
-    r"(?P<mission>S1[ABC])_(?P<mode>\w{2})_(?P<ptype>GRD[HM])_1S(?P<pols>\w{2})_"
+    r"(?P<mission>S1[ABCD])_(?P<mode>\w{2})_(?P<ptype>GRD[HM])_1S(?P<pols>\w{2})_"
     r"(?P<start>\d{8}T\d{6})_(?P<stop>\d{8}T\d{6})_(?P<absorbit>\d{6})_"
     r"(?P<takeid>\w{6})_(?P<uid>\w{4})"
 )
@@ -102,8 +106,13 @@ def relative_orbit(scene_id: str) -> int:
     match = _SCENE_RE.search(scene_id)
     if not match:
         raise ValueError(f"not a Sentinel-1 scene id: {scene_id!r}")
-    offset = _ORBIT_OFFSET.get(match["mission"], 73)
-    return ((int(match["absorbit"]) - offset) % _CYCLE) + 1
+    mission = match["mission"]
+    if mission not in _ORBIT_OFFSET:
+        # Falling back to another satellite's offset would not fail loudly, it
+        # would quietly label the scene with the wrong track and the caller
+        # would mix orbits without knowing.
+        raise ValueError(f"no orbit offset known for {mission}: {scene_id!r}")
+    return ((int(match["absorbit"]) - _ORBIT_OFFSET[mission]) % _CYCLE) + 1
 
 
 def _scene_from_prefix(prefix: str) -> Optional[GrdScene]:
