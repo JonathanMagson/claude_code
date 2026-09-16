@@ -43,6 +43,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 DEFAULT_MANIFEST = Path("data/before_after/before_after.csv")
 EARTHDATA_HOST = "urs.earthdata.nasa.gov"
+TOKEN_PAGE = "https://urs.earthdata.nasa.gov/users/{user}/user_tokens"
 
 #: Rough guide only; the dry run reports ASF's actual figures.
 TYPICAL_BYTES = {"slc": 4_000_000_000, "grd": 1_000_000_000}
@@ -61,6 +62,28 @@ def _require_asf():
             "  conda install -c conda-forge asf_search -y\n"
             "  (or: python -m pip install asf_search)"
         )
+
+
+def token(explicit: Optional[str] = None) -> Tuple[Optional[str], str]:
+    """An Earthdata bearer token, from the argument, environment, or a file.
+
+    Worth trying before a password. Earthdata expires passwords on a schedule
+    and an expired one is refused with the same "username or password is
+    incorrect" as a wrong one, so a login that used to work can start failing
+    with nothing to distinguish it. A token is issued from the profile page,
+    lasts months, and is what ASF's own tooling prefers.
+    """
+    if explicit:
+        return explicit.strip(), "--token"
+    env = os.environ.get("EARTHDATA_TOKEN")
+    if env:
+        return env.strip(), "EARTHDATA_TOKEN"
+    path = Path.home() / ".earthdata_token"
+    if path.exists():
+        value = path.read_text(encoding="utf-8").strip()
+        if value:
+            return value, str(path)
+    return None, ""
 
 
 def netrc_files() -> List[Path]:
@@ -127,9 +150,19 @@ Three things account for most of these:
    once at https://search.asf.alaska.edu/ and download anything by hand; that
    clears it.
 
+Passwords also expire on a schedule, and an expired one is refused with this
+exact message - so a login that worked last year can fail with nothing to
+distinguish it from a typo. A bearer token avoids the whole question:
+
+  1. open https://urs.earthdata.nasa.gov/users/YOUR_USERNAME/user_tokens
+  2. generate a token and copy it
+  3. save it to %USERPROFILE%\\.earthdata_token, or pass --token
+
+then re-run. Tokens last months and are what ASF's own tooling prefers.
+
 To try a different account without editing anything:
 
-    python tools/fetch_s1_level1.py --products grd --username YOUR_USERNAME"""
+    python tools/fetch_s1_level1.py --check-auth --username YOUR_USERNAME"""
 
 
 def use_system_certs(ca_bundle: Optional[Path] = None) -> str:
@@ -225,10 +258,25 @@ export it from the certificate viewer, or IT can supply it - and pass it:
 Do not disable certificate verification to get past this."""
 
 
-def session(username: Optional[str] = None, ca_bundle: Optional[Path] = None):
+def session(username: Optional[str] = None, ca_bundle: Optional[Path] = None,
+            bearer: Optional[str] = None):
     import asf_search as asf
 
     # run() has already set the trust store up; do not redo it or say so twice.
+    value, token_source = token(bearer)
+    if value:
+        print(f"  Earthdata token ({len(value)} characters) from {token_source}",
+              flush=True)
+        try:
+            return asf.ASFSession().auth_with_token(value)
+        except Exception as exc:
+            raise SystemExit(
+                f"\nEarthdata rejected the token.\n\n"
+                f"  Tokens expire; issue a fresh one at\n"
+                f"  {TOKEN_PAGE.format(user=username or 'YOUR_USERNAME')}\n\n"
+                f"original error: {exc}"
+            )
+
     user, password, source = credentials(username)
     # The length is enough to spot a truncated or empty stored password
     # without putting the secret itself on screen or in a log.
@@ -375,13 +423,14 @@ def annotation_only(product, dest: Path) -> List[Path]:
 
 
 def check_auth(username: Optional[str] = None,
-               ca_bundle: Optional[Path] = None) -> int:
+               ca_bundle: Optional[Path] = None,
+               bearer: Optional[str] = None) -> int:
     """Authenticate and stop - a two-second test instead of a whole run."""
     _require_asf()
     note = use_system_certs(ca_bundle)
     if note:
         print(note)
-    session(username, ca_bundle)
+    session(username, ca_bundle, bearer)
     print("\nauthentication succeeded")
     return 0
 
@@ -394,6 +443,7 @@ def run(
     annotation: bool = False,
     debug: bool = False,
     ca_bundle: Optional[Path] = None,
+    bearer: Optional[str] = None,
 ) -> int:
     _require_asf()
     note = use_system_certs(ca_bundle)
@@ -450,7 +500,7 @@ def run(
             print("\n  re-run with --debug to see every product ASF returned per granule")
         return 0 if not missing else 1
 
-    asf_session = session(username, ca_bundle)
+    asf_session = session(username, ca_bundle, bearer)
 
     # The same acquisition can serve two areas. Copy the local file rather than
     # pulling four gigabytes twice.
@@ -504,15 +554,18 @@ def main() -> int:
                     help="print every product ASF returns for each granule")
     ap.add_argument("--ca-bundle", type=Path, default=None,
                     help="PEM of your organisation's root CA, if TLS is inspected")
+    ap.add_argument("--token", default=None,
+                    help="Earthdata bearer token; tried before any password")
     ap.add_argument("--check-auth", action="store_true",
                     help="test the Earthdata login and exit, downloading nothing")
     args = ap.parse_args()
 
     try:
         if args.check_auth:
-            return check_auth(args.username, args.ca_bundle)
+            return check_auth(args.username, args.ca_bundle, args.token)
         return run(args.manifest, args.products, args.username,
-                   args.dry_run, args.annotation_only, args.debug, args.ca_bundle)
+                   args.dry_run, args.annotation_only, args.debug,
+                   args.ca_bundle, args.token)
     except AuthError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

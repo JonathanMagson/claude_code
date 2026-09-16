@@ -704,3 +704,32 @@ def test_ca_export_merges_the_os_store_with_certifi(tmp_path, monkeypatch):
     text = bundle.read_text(encoding="utf-8")
     # two injected OS certs plus the whole certifi set
     assert text.count("BEGIN CERTIFICATE") > 10
+
+
+def test_token_sources_are_tried_in_precedence_order(tmp_path, monkeypatch):
+    # Explicit beats environment beats file, so a one-off --token can override
+    # a stale saved one without editing anything.
+    from fetch_s1_level1 import token
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    monkeypatch.delenv("EARTHDATA_TOKEN", raising=False)
+    assert token() == (None, "")
+
+    (tmp_path / ".earthdata_token").write_text("  file.token  \n")
+    value, source = token()
+    assert value == "file.token"          # whitespace stripped
+    assert ".earthdata_token" in source
+
+    monkeypatch.setenv("EARTHDATA_TOKEN", "env.token")
+    assert token()[0] == "env.token"
+    assert token("cli.token")[0] == "cli.token"
+
+
+def test_auth_help_mentions_password_expiry_and_tokens():
+    # An expired password is refused with the same message as a wrong one, so
+    # the help has to name that possibility or the user has nothing to try.
+    from fetch_s1_level1 import AUTH_HELP
+
+    assert "expire" in AUTH_HELP
+    assert "user_tokens" in AUTH_HELP
