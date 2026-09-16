@@ -489,3 +489,81 @@ def test_raster_scan_reads_collection_1_underscored_names(tmp_path):
     (acq / "x_vv_gamma0.tif").touch()
     (acq / "x_mask.tif").touch()
     assert set(scan(tmp_path)[("burst", "date")]) == {"vv", "mask"}
+
+
+# ---------------------------------------------------------------------------
+# Level-1 download planning
+# ---------------------------------------------------------------------------
+
+
+def _manifest(tmp_path, rows):
+    import csv as _csv
+
+    from fetch_s1_level1 import DEFAULT_MANIFEST  # noqa: F401  (import check)
+
+    fields = ["aoi", "role", "acquired", "ga_burst_id", "slc_scene_id", "grd_scene_id"]
+    root = tmp_path / "before_after"
+    root.mkdir()
+    path = root / "before_after.csv"
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = _csv.DictWriter(f, fieldnames=fields)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({k: row.get(k, "") for k in fields})
+    return path
+
+
+def test_level1_downloads_land_beside_the_ga_rasters(tmp_path):
+    # The zips have to go into the acquisition folder the NRB rasters are in,
+    # which means rebuilding the YYYYMMDD folder name from the CSV's date.
+    from fetch_s1_level1 import read_manifest
+
+    path = _manifest(tmp_path, [
+        {"aoi": "hunter", "role": "before", "acquired": "2024-06-03",
+         "ga_burst_id": "t009_019128_iw3", "slc_scene_id": "SLC_A",
+         "grd_scene_id": "GRD_A"},
+    ])
+    jobs = read_manifest(path, ["slc", "grd"])
+    expected = path.parent / "hunter" / "t009_019128_iw3" / "20240603"
+    assert [j["dest"] for j in jobs] == [expected, expected]
+
+
+def test_level1_skips_rows_with_no_scene_id(tmp_path):
+    from fetch_s1_level1 import read_manifest
+
+    path = _manifest(tmp_path, [
+        {"aoi": "a", "role": "before", "acquired": "2024-06-03",
+         "ga_burst_id": "b", "slc_scene_id": "SLC_A", "grd_scene_id": ""},
+    ])
+    jobs = read_manifest(path, ["slc", "grd"])
+    assert [j["kind"] for j in jobs] == ["slc"]
+
+
+def test_level1_product_selection_is_honoured(tmp_path):
+    from fetch_s1_level1 import read_manifest
+
+    path = _manifest(tmp_path, [
+        {"aoi": "a", "role": "before", "acquired": "2024-06-03",
+         "ga_burst_id": "b", "slc_scene_id": "SLC_A", "grd_scene_id": "GRD_A"},
+    ])
+    assert [j["kind"] for j in read_manifest(path, ["grd"])] == ["grd"]
+
+
+def test_earthdata_credentials_come_from_the_environment(monkeypatch):
+    from fetch_s1_level1 import credentials
+
+    monkeypatch.setenv("EARTHDATA_USERNAME", "user")
+    monkeypatch.setenv("EARTHDATA_PASSWORD", "secret")
+    monkeypatch.setenv("HOME", "/nonexistent")
+    assert credentials() == ("user", "secret")
+
+
+def test_missing_credentials_raise_with_a_usable_message(monkeypatch):
+    from fetch_s1_level1 import AuthError, credentials
+
+    monkeypatch.delenv("EARTHDATA_USERNAME", raising=False)
+    monkeypatch.delenv("EARTHDATA_PASSWORD", raising=False)
+    monkeypatch.setenv("HOME", "/nonexistent")
+    with pytest.raises(AuthError) as excinfo:
+        credentials()
+    assert "urs.earthdata.nasa.gov" in str(excinfo.value)
