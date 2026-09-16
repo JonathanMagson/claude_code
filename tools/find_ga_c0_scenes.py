@@ -90,15 +90,28 @@ def search_aoi(
     end: str,
     collections: Sequence[str] = COLLECTIONS_C0,
     limit: Optional[int] = None,
+    track: Optional[int] = None,
 ) -> List[dict]:
-    """Every Collection 0 item intersecting an AOI, as plain dicts."""
+    """Every Collection 0 item intersecting an AOI, as plain dicts.
+
+    ``track`` restricts to one relative orbit. Worth using: an AOI is normally
+    seen by three or four tracks, and ascending and descending passes view the
+    canopy from opposite sides. Mixing them puts a viewing-geometry difference
+    straight into any change signal, so a time series should be built from one
+    track, not from everything that overlaps.
+    """
     search = client.search(
         collections=list(collections),
         bbox=list(bbox),
         datetime=f"{start}/{end}",
         max_items=limit,
     )
-    return [item.to_dict() for item in search.items()]
+    items = [item.to_dict() for item in search.items()]
+    if track is not None:
+        items = [
+            i for i in items if i.get("properties", {}).get("sat:relative_orbit") == track
+        ]
+    return items
 
 
 def summarise(items: Sequence[dict]) -> dict:
@@ -134,6 +147,8 @@ def build(
     end: str,
     match_level1: bool = True,
     catalog: str = CATALOG,
+    track: Optional[int] = None,
+    max_slcs: Optional[int] = None,
     verbose: bool = True,
 ) -> dict:
     client = open_catalog(catalog)
@@ -143,7 +158,7 @@ def build(
         aoi = AOIS[name]
         if verbose:
             print(f"\n=== {name}: {aoi['label']} ===", flush=True)
-        items = search_aoi(client, aoi["bbox"], start, end)
+        items = search_aoi(client, aoi["bbox"], start, end, track=track)
         summary = summarise(items)
         if verbose:
             print(f"  {summary['items']} Collection 0 items "
@@ -155,7 +170,13 @@ def build(
         if match_level1:
             # One GRD lookup per SLC costs a day listing each, so pair the
             # distinct scenes rather than every burst item.
-            for slc in summary["slc_scene_ids"]:
+            slcs = summary["slc_scene_ids"]
+            if max_slcs is not None:
+                slcs = slcs[:max_slcs]
+            if verbose:
+                print(f"  pairing {len(slcs)} of {len(summary['slc_scene_ids'])} SLCs "
+                      "to Level-1 (one archive-day listing per distinct date)", flush=True)
+            for slc in slcs:
                 grds = match_grd_for_slc(slc)
                 twin = next((g for g in grds if g["exact_twin"]), grds[0] if grds else None)
                 pairs.append(
@@ -181,6 +202,7 @@ def build(
         "generated": datetime.now().isoformat(timespec="seconds"),
         "catalog": catalog,
         "window": [start, end],
+        "track": track,
         "aois": out,
     }
 
@@ -193,6 +215,10 @@ def main() -> int:
     ap.add_argument("--catalog", default=CATALOG)
     ap.add_argument("--no-level1", action="store_true",
                     help="skip GRD/SLC matching (much faster)")
+    ap.add_argument("--track", type=int, default=None,
+                    help="restrict to one relative orbit; a time series should use one")
+    ap.add_argument("--max-slcs", type=int, default=None,
+                    help="cap how many SLCs get paired to Level-1")
     ap.add_argument("--out", default="c0_manifest.json")
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args()
@@ -200,7 +226,8 @@ def main() -> int:
     try:
         manifest = build(args.aoi, args.start, args.end,
                          match_level1=not args.no_level1,
-                         catalog=args.catalog, verbose=not args.quiet)
+                         catalog=args.catalog, track=args.track,
+                         max_slcs=args.max_slcs, verbose=not args.quiet)
     except (CatalogUnreachable, ImportError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

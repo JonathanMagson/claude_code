@@ -45,9 +45,23 @@ single-HH (Antarctic) and only 150 VV+VH — the continental run is not in
 there either.
 
 So a Collection 1 coverage gap is **not** evidence that GA has no data for an
-area. For the three AOIs below, Collection 0 very likely does cover all three,
-and the way to confirm it is `tools/find_ga_c0_scenes.py` run from a network
-that can reach `explorer.dev.dea.ga.gov.au`.
+area. **Confirmed by running `tools/find_ga_c0_scenes.py` from a network that
+can reach the API** — Collection 0 covers all three, with real time series:
+
+| AOI | Collection 0 items | Dates | Tracks |
+| --- | --- | --- | --- |
+| Hunter | 895 | 97 | 9, 74, 147 |
+| Pilliga | 946 | 95 | 9, 45, 118 |
+| Blue Mountains | 444 | 64 | 9, 147 |
+
+All VV+VH, over 1 Jun 2024 – 30 Jun 2025. Those tracks match what the OPERA
+burst database predicts for each AOI, which is a useful cross-check that the
+two independent routes agree.
+
+**Track 9 covers all three areas.** Since ascending and descending passes view
+the canopy from opposite sides, a time series should be built from one track —
+and track 9 is the one that lets all three areas share the same geometry. Pass
+`--track 9`.
 
 ## Collection 1 covers one of the three
 
@@ -170,9 +184,16 @@ python tools/find_ga_c0_scenes.py --out c0_manifest.json
 python tools/find_ga_c0_scenes.py --aoi hunter bluemtns --no-level1
 ```
 
-Its Level-1 matching reuses the same code the Collection 1 path uses, so that
-half is exercised; the STAC query itself could not be run from here and is
-untested against the live API.
+Restrict to one track and cap the pairing, or the run is long — an AOI has
+~900 items over ~95 dates, and each distinct SLC needs a day of the global GRD
+archive listed:
+
+```bash
+python tools/find_ga_c0_scenes.py --track 9 --max-slcs 20 --out c0_manifest.json
+```
+
+Day listings are cached, so several SLCs from one pass cost one listing rather
+than one each (measured: 1.8 s cold, 0.00 s warm).
 
 | What | Where |
 | --- | --- |

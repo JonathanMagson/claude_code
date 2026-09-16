@@ -31,6 +31,7 @@ import json
 import re
 import sys
 from datetime import date, datetime, timedelta
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
@@ -78,6 +79,21 @@ def _datatake(scene_id: str) -> Optional[tuple]:
     return (match.group(1), match.group(2)) if match else None
 
 
+@lru_cache(maxsize=512)
+def _day_scenes(day: date, mode: str, pols: str) -> tuple:
+    """One day of the global GRD archive, cached.
+
+    A pass is cut into a dozen or more slices and every burst of that pass
+    names the same few SLCs, so an uncached lookup re-lists the same day once
+    per SLC. Over a Collection 0 time series that is the difference between
+    minutes and hours.
+    """
+    try:
+        return tuple(list_day(day, mode, pols))
+    except Exception:
+        return ()
+
+
 def match_grd_for_slc(slc_id: str, pols: str = "DV") -> List[dict]:
     """GRD slices from the same acquisition as an SLC, closest in time first.
 
@@ -95,10 +111,7 @@ def match_grd_for_slc(slc_id: str, pols: str = "DV") -> List[dict]:
     day = datetime.strptime(stamp.group(1), "%Y%m%d").date()
     slc_start = stamp.group(2)
 
-    try:
-        scenes = list_day(day, "IW", pols)
-    except Exception:
-        return []
+    scenes = _day_scenes(day, "IW", pols)
 
     out = []
     for scene in scenes:
