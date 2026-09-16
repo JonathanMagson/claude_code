@@ -15,29 +15,69 @@ character:
 | `pilliga` | Pilliga Forest, Narrabri – Baradine | 148.90, -31.10, 149.75, -30.35 |
 | `bluemtns` | Blue Mountains, Katoomba – Blackheath | 150.10, -33.85, 150.60, -33.45 |
 
-## The headline: GA covers one of the three
+## Two collections, and which one you are looking at
 
-GA's Collection 1 is a **soft-release sample over selected tracks, not
+This matters more than anything else here, because the two GA collections have
+completely different reach and only one of them can be read from S3.
+
+| | Collection 1 | Collection 0 |
+| --- | --- | --- |
+| What | current production run | 2025 early-access release |
+| Coverage | selected tracks, sample | **continental Australia**, 1 Jun 2024 – 30 Jun 2025 |
+| Extended sites | none | Griffith NSW (Apr 2024 – Apr 2025), Kununurra WA (2015 – 2025), Injune/Starcke/Mungalla QLD (2018 – 2025) |
+| Access | public bucket, listable | **STAC API only** |
+| Tooling here | `vegmon.ga_nrb`, `tools/find_comparison_scenes.py` | `tools/find_ga_c0_scenes.py` |
+
+Everything in the next section is **Collection 1**, read directly from the
+bucket. Its shape was confirmed against GA's own burst-completeness report in
+`dea-public-data-dev/projects/s1_nrb/monitoring/`, which names
+`dea-public-data-dev` / `baseline` / collection `1` as the live target — so
+this is the right place, not a stale copy.
+
+**Collection 0 is a different archive and is not in any publicly listable
+bucket.** Searched for and not found: `baseline/`, `derivative/`,
+`projects/`, `experimental/` and the bucket roots of `dea-public-data`,
+`dea-public-data-dev` and `deant-data-public-dev`. The only Collection 0
+VV+VH data in reachable S3 is a single CEOS-ARD certification example under
+`deant-data-public-dev/persistent/CEOS-ARD/data/example_2/`. GA's own
+dev-bucket processing record lists 21,365 IW scenes of which 21,201 are
+single-HH (Antarctic) and only 150 VV+VH — the continental run is not in
+there either.
+
+So a Collection 1 coverage gap is **not** evidence that GA has no data for an
+area. For the three AOIs below, Collection 0 very likely does cover all three,
+and the way to confirm it is `tools/find_ga_c0_scenes.py` run from a network
+that can reach `explorer.dev.dea.ga.gov.au`.
+
+## Collection 1 covers one of the three
+
+Collection 1 is a **soft-release sample over selected tracks, not
 continental coverage**. Checking every published burst in all four IW products
 against the three AOIs:
 
-| AOI | GA NRB bursts | Track | Nearest published burst |
+| AOI | Collection 1 bursts | Track | Nearest published burst |
 | --- | --- | --- | --- |
 | Pilliga | **17** | 45 | on target |
 | Hunter | **0** | – | ~134 km west |
 | Blue Mountains | **0** | – | ~91 km west |
 
+None of GA's own extended-time-series sites are in Collection 1 either —
+Griffith NSW and Injune QLD both return 0 bursts — which is another way of
+seeing that Collection 1 and Collection 0 are separate archives.
+
 Over mainland Australia the VV+VH product is 1,761 bursts on 13 tracks. In
 NSW that is a **single descending swath on relative orbit 45**, running
 Moree → Narrabri → Dubbo/Mudgee → Bathurst/Orange → Cowra → Wagga. It passes
-inland of both the Hunter and the Blue Mountains. No amount of searching
-changes that — the data was never processed.
+inland of both the Hunter and the Blue Mountains. That is a statement about
+Collection 1 only; Collection 0's continental run is the thing to check for
+those two areas.
 
 The other IW products do not help: `ga_s1_nrb_iw_hh_1` (12,744 bursts) and
 `ga_s1_nrb_iw_hh_hv_1` (287) are polar, and Sentinel-1 flies VV+VH over
 Australia anyway.
 
-If a covered substitute is acceptable, the two nearest on-track options are:
+If Collection 0 turns out to be unavailable to you and a Collection 1
+substitute is needed, the two nearest on-track options are:
 
 * **Upper Hunter around Merriwa/Cassilis** — bursts `t045_095779_iw1`,
   `t045_095780_iw1`. Same catchment, grazing and woodland rather than the
@@ -119,6 +159,20 @@ python tools/find_comparison_scenes.py --out comparison_manifest.json
 
 Both go straight at the public buckets with anonymous `ListObjectsV2` — no
 account, no token, and nothing through a STAC API.
+
+Collection 0 has no bucket to list, so it goes through the STAC API instead:
+
+```bash
+# needs explorer.dev.dea.ga.gov.au to be reachable
+python tools/find_ga_c0_scenes.py --out c0_manifest.json
+
+# coverage check only, skipping the per-SLC GRD lookups
+python tools/find_ga_c0_scenes.py --aoi hunter bluemtns --no-level1
+```
+
+Its Level-1 matching reuses the same code the Collection 1 path uses, so that
+half is exercised; the STAC query itself could not be run from here and is
+untested against the live API.
 
 | What | Where |
 | --- | --- |
