@@ -406,3 +406,51 @@ def test_int_coercion_treats_blanks_as_zero():
     assert _int("2") == 2
     assert _int("") == 0
     assert _int(None) == 0
+
+
+# ---------------------------------------------------------------------------
+# before/after pair selection
+# ---------------------------------------------------------------------------
+
+
+def _ba_item(burst, day):
+    return {"properties": {"sarard:burst_id": burst,
+                           "datetime": f"{day}T08:40:00Z"}}
+
+
+BA_ITEMS = (
+    [_ba_item(b, "2024-06-03") for b in ("a", "b", "c")]
+    + [_ba_item(b, "2024-09-01") for b in ("a", "b")]
+    + [_ba_item(b, "2025-06-22") for b in ("a", "b", "d")]
+)
+
+
+def test_before_after_picks_a_burst_present_on_both_dates():
+    # 'c' is only on the first date and 'd' only on the last; choosing either
+    # gives a pair that cannot be differenced.
+    from make_before_after import pick_pair
+
+    burst, first, last = pick_pair(BA_ITEMS)
+    assert burst in ("a", "b")
+    assert (first, last) == ("2024-06-03", "2025-06-22")
+
+
+def test_before_after_rejects_a_burst_missing_from_one_date():
+    from make_before_after import pick_pair
+
+    with pytest.raises(SystemExit):
+        pick_pair(BA_ITEMS, burst="c")
+
+
+def test_before_after_rejects_a_date_with_no_acquisition():
+    from make_before_after import pick_pair
+
+    with pytest.raises(SystemExit):
+        pick_pair(BA_ITEMS, before="2024-07-04")
+
+
+def test_before_after_needs_two_dates():
+    from make_before_after import pick_pair
+
+    with pytest.raises(SystemExit):
+        pick_pair([_ba_item("a", "2024-06-03")])
