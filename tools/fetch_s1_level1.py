@@ -106,24 +106,72 @@ def use_system_certs(ca_bundle: Optional[Path] = None) -> str:
     ``CERTIFICATE_VERIFY_FAILED: self-signed certificate in certificate
     chain`` against a site that opens fine in a browser.
 
-    ``truststore`` redirects verification at the OS store, which is the correct
-    fix: the corporate CA is trusted because IT installed it, and every other
-    certificate is still verified normally. Turning verification off would
-    "work" too, and would hand anyone on the path the ability to serve
-    whatever they like - so it is not an option here.
+    The corporate CA is legitimately trusted here - IT installed it on the
+    machine - so the fix is to let Python see it, not to stop checking.
+    Turning verification off would clear the error too, and would hand anyone
+    on the path the ability to serve whatever they like in place of a
+    multi-gigabyte file, so it is not offered.
     """
     if ca_bundle:
         path = str(Path(ca_bundle).resolve())
         os.environ["REQUESTS_CA_BUNDLE"] = path
         os.environ["SSL_CERT_FILE"] = path
         return f"using CA bundle {path}"
-    try:
-        import truststore
 
-        truststore.inject_into_ssl()
-        return "verifying against the system certificate store (truststore)"
-    except ImportError:
-        return ""
+    if os.environ.get("REQUESTS_CA_BUNDLE"):
+        return f"using CA bundle from the environment: {os.environ['REQUESTS_CA_BUNDLE']}"
+
+    exported = export_system_ca_bundle()
+    if exported:
+        os.environ["REQUESTS_CA_BUNDLE"] = str(exported)
+        os.environ["SSL_CERT_FILE"] = str(exported)
+        return f"using system + certifi CA bundle: {exported}"
+    return ""
+
+
+def export_system_ca_bundle(cache: Optional[Path] = None) -> Optional[Path]:
+    """Write the OS trust store plus certifi to one PEM, and return its path.
+
+    ``truststore.inject_into_ssl()`` looks like the obvious answer and is not:
+    it replaces ``ssl.SSLContext`` globally, and urllib3 setting
+    ``context.verify_mode`` on the replacement recurses until the stack runs
+    out. Exporting instead leaves every library's SSL machinery untouched -
+    only the list of trusted roots changes.
+
+    certifi is included as well as the OS roots, because a network that
+    inspects HTTPS usually inspects only some hosts; the rest still present
+    ordinary public certificates and must keep verifying.
+
+    Returns None off Windows, where ``ssl.enum_certificates`` does not exist
+    and the platform's roots are normally what Python already uses.
+    """
+    import ssl
+
+    if not hasattr(ssl, "enum_certificates"):
+        return None
+
+    pems: List[str] = []
+    for store in ("ROOT", "CA"):
+        try:
+            for cert, encoding, _trust in ssl.enum_certificates(store):
+                if encoding == "x509_asn":
+                    pems.append(ssl.DER_cert_to_PEM_cert(cert))
+        except Exception:
+            continue
+    if not pems:
+        return None
+
+    try:
+        import certifi
+
+        base = Path(certifi.where()).read_text(encoding="utf-8")
+    except Exception:
+        base = ""
+
+    cache = cache or Path.home() / ".cache" / "vegmon" / "ca-bundle.pem"
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_text(base + "\n" + "\n".join(pems), encoding="utf-8")
+    return cache
 
 
 TLS_HELP = """TLS verification failed - the certificate chain ends in one your
@@ -131,14 +179,10 @@ Python does not trust. On a network that inspects HTTPS this is expected: the
 proxy re-signs traffic with your organisation's root CA, which Windows trusts
 and Python's bundled certifi does not.
 
-Fix it by having Python use the system trust store:
-
-    python -m pip install truststore
-
-then re-run. This script picks it up automatically.
-
-If that is unavailable, export your organisation's root CA to a .pem and pass
-it:
+On Windows this script now exports the OS trust store to a PEM automatically
+and points requests at it, so re-running is usually enough. If the export
+found nothing, get your organisation's root CA as a .pem - your browser can
+export it from the certificate viewer, or IT can supply it - and pass it:
 
     python tools/fetch_s1_level1.py --ca-bundle C:\\path\\to\\corporate-root.pem
 
@@ -148,9 +192,7 @@ Do not disable certificate verification to get past this."""
 def session(username: Optional[str] = None, ca_bundle: Optional[Path] = None):
     import asf_search as asf
 
-    note = use_system_certs(ca_bundle)
-    if note:
-        print(f"  {note}", flush=True)
+    # run() has already set the trust store up; do not redo it or say so twice.
     user, password = credentials(username)
     try:
         return asf.ASFSession().auth_with_creds(user, password)

@@ -637,7 +637,40 @@ def test_explicit_ca_bundle_is_exported_for_requests(tmp_path, monkeypatch):
 def test_tls_help_names_the_fix_and_refuses_the_shortcut():
     from fetch_s1_level1 import TLS_HELP
 
-    assert "truststore" in TLS_HELP
     assert "--ca-bundle" in TLS_HELP
+    assert "root CA" in TLS_HELP
     # Disabling verification would make the error go away and is not a fix.
     assert "Do not disable certificate verification" in TLS_HELP
+
+
+def test_ca_export_degrades_where_the_os_store_is_not_enumerable(monkeypatch):
+    # ssl.enum_certificates is Windows-only; elsewhere this must return None
+    # rather than raising, since Python already uses the platform roots there.
+    import ssl as _ssl
+
+    from fetch_s1_level1 import export_system_ca_bundle
+
+    monkeypatch.delattr(_ssl, "enum_certificates", raising=False)
+    assert export_system_ca_bundle() is None
+
+
+def test_ca_export_merges_the_os_store_with_certifi(tmp_path, monkeypatch):
+    # A network that inspects HTTPS usually inspects only some hosts, so the
+    # bundle has to keep the public roots as well as the corporate one.
+    import ssl as _ssl
+
+    from fetch_s1_level1 import export_system_ca_bundle
+
+    fake = _ssl.PEM_cert_to_DER_cert(
+        "-----BEGIN CERTIFICATE-----\n" + "MIIBIjANBgkq" * 4 + "\n-----END CERTIFICATE-----\n"
+    )
+    monkeypatch.setattr(
+        _ssl, "enum_certificates",
+        lambda store: [(fake, "x509_asn", True)] if store in ("ROOT", "CA") else [],
+        raising=False,
+    )
+    bundle = export_system_ca_bundle(tmp_path / "ca-bundle.pem")
+    assert bundle is not None
+    text = bundle.read_text(encoding="utf-8")
+    # two injected OS certs plus the whole certifi set
+    assert text.count("BEGIN CERTIFICATE") > 10
