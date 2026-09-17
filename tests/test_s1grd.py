@@ -733,3 +733,38 @@ def test_auth_help_mentions_password_expiry_and_tokens():
 
     assert "expire" in AUTH_HELP
     assert "user_tokens" in AUTH_HELP
+
+
+# ---------------------------------------------------------------------------
+# NRB post-processing
+# ---------------------------------------------------------------------------
+
+
+def test_db_conversion_floors_zeros_instead_of_producing_minus_inf():
+    # GA's rasters contain exact zeros; a single -inf poisons every mean and
+    # percentile computed downstream.
+    from postprocess_nrb import to_db
+
+    values = np.array([0.0, 1e-20, 0.1, 1.0], dtype="float64")
+    db = to_db(values, epsilon=1e-10)
+    assert np.isfinite(db).all()
+    assert db[0] == pytest.approx(-100.0)     # the floor, not -inf
+    assert db[3] == pytest.approx(0.0)        # 10*log10(1) == 0
+
+
+def test_db_conversion_matches_the_published_equation():
+    # GA state conversion_eq as 10*log10(backscatter_linear).
+    from postprocess_nrb import to_db
+
+    assert to_db(np.array([0.5]))[0] == pytest.approx(10 * np.log10(0.5), abs=1e-5)
+
+
+def test_outputs_are_excluded_from_a_rerun(tmp_path):
+    # Without this a second run filters its own output, compounding smoothing.
+    from postprocess_nrb import find_inputs
+
+    (tmp_path / "a_VV-gamma0.tif").touch()
+    (tmp_path / "a_VV-gamma0_sf_db.tif").touch()
+    (tmp_path / "a_mask.tif").touch()
+    found = [p.name for p in find_inputs(tmp_path, "_sf_db")]
+    assert found == ["a_VV-gamma0.tif"]
