@@ -147,3 +147,54 @@ def test_unfinished_run_is_reported_clearly(tmp_path: Path):
     dim.touch()
     with pytest.raises(measure_shift.MeasureError, match="did not finish"):
         measure_shift.resolve_band(dim)
+
+
+def test_common_patch_avoids_an_empty_centre():
+    """A GA NRB burst is a parallelogram in a north-up box, so the middle of the
+    box is often entirely nodata."""
+    reference = np.full((400, 400), np.nan, dtype="float32")
+    target = np.full((400, 400), np.nan, dtype="float32")
+    reference[10:110, 10:110] = 1.0
+    target[10:110, 10:110] = 1.0
+    ref_patch, tgt_patch = measure_shift.common_patch(reference, target, 64)
+    assert np.isfinite(ref_patch).all()
+    assert np.isfinite(tgt_patch).all()
+
+
+def test_common_patch_cuts_both_from_the_same_window():
+    """Centring each patch on its own valid data would cancel the very shift
+    being measured."""
+    reference = np.full((200, 200), np.nan, dtype="float32")
+    target = np.full((200, 200), np.nan, dtype="float32")
+    reference[20:120, 20:120] = 1.0
+    target[40:140, 40:140] = 1.0  # valid region offset from the reference's
+    ref_patch, tgt_patch = measure_shift.common_patch(reference, target, 32)
+    # Same window means the two patches line up index for index.
+    assert ref_patch.shape == tgt_patch.shape
+    assert np.isfinite(ref_patch).all() and np.isfinite(tgt_patch).all()
+
+
+def test_common_patch_refuses_disjoint_valid_regions():
+    reference = np.full((200, 200), np.nan, dtype="float32")
+    target = np.full((200, 200), np.nan, dtype="float32")
+    reference[:50, :50] = 1.0
+    target[150:, 150:] = 1.0
+    with pytest.raises(measure_shift.MeasureError, match="never have data at the same pixel"):
+        measure_shift.common_patch(reference, target, 32)
+
+
+def test_common_patch_requires_a_common_grid():
+    with pytest.raises(measure_shift.MeasureError, match="common grid"):
+        measure_shift.common_patch(np.zeros((10, 10)), np.zeros((12, 12)), 4)
+
+
+def test_shift_is_still_recovered_when_the_centre_is_empty(tmp_path: Path):
+    """The real-data case: valid pixels off-centre, and a genuine offset."""
+    scene = speckled_scene(size=768)
+    framed = np.full((768, 768), np.nan, dtype="float32")
+    framed[40:440, 40:440] = scene[40:440, 40:440]
+    reference = write(tmp_path / "ref.tif", framed)
+    target = write(tmp_path / "tgt.tif", framed, row_offset=3, col_offset=-2)
+    rows, cols, sharpness, _, _ = measure_shift.measure(reference, target, patch=256)
+    assert (rows, cols) == (3, -2)
+    assert sharpness > 8

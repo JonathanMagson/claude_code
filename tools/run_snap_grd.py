@@ -52,11 +52,12 @@ DEFAULT_DEM = "Copernicus 30m Global DEM"
 DEFAULT_OVERSAMPLING = "2.0"
 DEFAULT_OVERLAP = "0.2"
 
-# The GA NRB products are delivered in UTM. Matching the projection at source
-# avoids a reproject-and-resample step before any comparison.
+# Fallback only, used when no GA raster can be read beside the scene. GA picks
+# the projection per burst, which is not always the zone the AOI centre sits in:
+# the Pilliga centre is zone 55, but GA delivers that burst in zone 56.
 AOI_CRS = {
     "hunter": "EPSG:32756",
-    "pilliga": "EPSG:32755",
+    "pilliga": "EPSG:32756",
     "bluemtns": "EPSG:32756",
 }
 
@@ -156,16 +157,50 @@ def find_grd_zips(root: Path) -> list[Path]:
     return scenes
 
 
+def crs_from_reference(scene: Path) -> Optional[str]:
+    """CRS of a GA NRB raster sitting beside *scene*, if one is readable.
+
+    Matching GA's projection at source is what makes the products directly
+    comparable: otherwise the comparison has to reproject, adding a resampling
+    step between two things that are supposed to be measured against each other.
+
+    Needs rasterio. This module is otherwise stdlib-only and still works without
+    it, so the import is deliberately local and optional.
+    """
+    candidates = sorted(scene.parent.glob("ga_*gamma0.tif"))
+    if not candidates:
+        return None
+    try:
+        import rasterio  # noqa: PLC0415
+    except ImportError:
+        return None
+    try:
+        with rasterio.open(candidates[0]) as reference:
+            code = reference.crs.to_string() if reference.crs else None
+    except Exception:
+        return None
+    return code
+
+
 def crs_for(scene: Path, override: Optional[str] = None) -> str:
-    """UTM CRS for a scene, from the AOI folder name in its path."""
+    """Projection for a scene: explicit, else GA's own, else the AOI fallback.
+
+    The fallback is a guess from the AOI's centre longitude and has been wrong
+    before -- GA's Pilliga burst is zone 56 although the AOI centre sits in
+    zone 55 -- so the GA raster wins whenever one can be read.
+    """
     if override:
         return override
+    from_reference = crs_from_reference(scene)
+    if from_reference:
+        return from_reference
     lowered = {part.lower() for part in scene.parts}
     for aoi, code in AOI_CRS.items():
         if aoi in lowered:
             return code
     raise ConfigError(
-        f"cannot infer a CRS for {scene}: no known AOI folder in its path "
+        f"cannot infer a CRS for {scene}: no GA raster beside it to take one "
+        f"from, and no known AOI folder in its path "
         f"({', '.join(sorted(AOI_CRS))}). Pass --crs explicitly."
     )
 

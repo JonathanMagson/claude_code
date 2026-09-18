@@ -102,6 +102,33 @@ def centred_patch(array: np.ndarray, size: int) -> np.ndarray:
     return array[row0:row0 + size, col0:col0 + size]
 
 
+def common_patch(reference: np.ndarray, target: np.ndarray, size: int):
+    """Matching size x size blocks cut where BOTH rasters have data.
+
+    The geometric centre of the overlap is often empty: a GA NRB burst is a
+    parallelogram inside a north-up bounding box, so the middle of that box can
+    be entirely nodata.
+
+    Both patches must come from the SAME window. Centring each on its own valid
+    data would move them independently and cancel out exactly the displacement
+    being measured.
+    """
+    if reference.shape != target.shape:
+        raise MeasureError("patches must be cut from rasters on a common grid")
+    usable = np.isfinite(reference) & np.isfinite(target)
+    if not usable.any():
+        raise MeasureError(
+            "the two rasters never have data at the same pixel; nothing to correlate"
+        )
+    rows, cols = reference.shape
+    size = min(size, rows, cols)
+    row_centre, col_centre = (int(round(axis.mean())) for axis in np.nonzero(usable))
+    row0 = int(np.clip(row_centre - size // 2, 0, rows - size))
+    col0 = int(np.clip(col_centre - size // 2, 0, cols - size))
+    window = (slice(row0, row0 + size), slice(col0, col0 + size))
+    return reference[window], target[window]
+
+
 def prepare(patch: np.ndarray) -> np.ndarray:
     """Mean-remove, zero-fill gaps and window, ready for phase correlation."""
     finite = np.isfinite(patch)
@@ -176,9 +203,12 @@ def align(reference_path: Path, target_path: Path):
 
 def measure(reference_path: Path, target_path: Path, patch: int = DEFAULT_PATCH):
     reference_data, resampled, pixel, shape = align(reference_path, target_path)
-    reference_patch = prepare(centred_patch(to_db(reference_data), patch))
-    target_patch = prepare(centred_patch(to_db(resampled), patch))
-    row_shift, col_shift, sharpness = phase_correlate(reference_patch, target_patch)
+    reference_patch, target_patch = common_patch(
+        to_db(reference_data), to_db(resampled), patch
+    )
+    row_shift, col_shift, sharpness = phase_correlate(
+        prepare(reference_patch), prepare(target_patch)
+    )
     return row_shift, col_shift, sharpness, pixel, shape
 
 

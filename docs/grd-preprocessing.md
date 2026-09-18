@@ -36,9 +36,15 @@ is also the "turn flattening off for now" option, since it keeps the gamma0
 convention and so stays at least dimensionally comparable to the GA product.
 
 Common settings, chosen to match the GA NRB so no reprojection is needed before
-comparing: **20 m** pixel spacing, **UTM** (EPSG:32755 for Pilliga, 32756 for
-Hunter and the Blue Mountains), **Copernicus 30m Global DEM**, output grid
-aligned to standard grid.
+comparing: **20 m** pixel spacing, **Copernicus 30m Global DEM**, output grid
+aligned to a standard grid, and the **projection read from the GA raster beside
+the scene**.
+
+Do not assume the UTM zone from the AOI's longitude. GA chooses it per burst,
+and it is not always the zone the AOI centre falls in -- the Pilliga centre is
+in zone 55, but GA delivers that burst in zone 56. The runner reads the CRS off
+`ga_*gamma0.tif` when rasterio is available, falls back to a per-AOI table
+otherwise, and `--crs` overrides both.
 
 Speckle filtering, where present, runs in **radar geometry** (after calibration,
 before flattening or geocoding). That is where speckle statistics hold; after

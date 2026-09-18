@@ -191,10 +191,44 @@ def test_variants_do_not_collide(tmp_path: Path):
 
 
 def test_crs_inferred_from_aoi_folder(tmp_path: Path):
+    """Fallback path, used only when no GA raster can be read beside the scene."""
     scene = tmp_path / "before_after" / "pilliga" / "t009" / "S1A_IW_GRDH_x.zip"
-    assert runner.crs_for(scene) == "EPSG:32755"
+    assert runner.crs_for(scene) == "EPSG:32756"
     hunter = tmp_path / "before_after" / "hunter" / "t009" / "S1A_IW_GRDH_x.zip"
     assert runner.crs_for(hunter) == "EPSG:32756"
+
+
+def test_crs_is_taken_from_the_ga_raster_not_the_aoi_guess(tmp_path: Path):
+    """GA picks the projection per burst, and it is not always the zone the AOI
+    centre falls in -- the Pilliga centre is zone 55, GA delivers zone 56."""
+    import numpy as np
+    import rasterio
+    from rasterio.transform import from_origin
+
+    scene_dir = tmp_path / "pilliga" / "t009_019142_iw1" / "20240603"
+    scene_dir.mkdir(parents=True)
+    scene = scene_dir / "S1A_IW_GRDH_x.zip"
+    reference = scene_dir / "ga_s1a_nrb_0-1-0_T009-019142-IW1_x_VH-gamma0.tif"
+    with rasterio.open(
+        reference, "w", driver="GTiff", height=4, width=4, count=1,
+        dtype="float32", crs="EPSG:32756", transform=from_origin(0, 0, 20, 20),
+    ) as dst:
+        dst.write(np.zeros((4, 4), dtype="float32"), 1)
+    assert runner.crs_for(scene) == "EPSG:32756"
+
+
+def test_explicit_crs_beats_the_ga_raster(tmp_path: Path):
+    scene_dir = tmp_path / "pilliga" / "t009" / "20240603"
+    scene_dir.mkdir(parents=True)
+    (scene_dir / "ga_x_VH-gamma0.tif").touch()  # unreadable, must not be consulted
+    assert runner.crs_for(scene_dir / "S1A_IW_GRDH_x.zip", "EPSG:4326") == "EPSG:4326"
+
+
+def test_unreadable_ga_raster_falls_back_rather_than_crashing(tmp_path: Path):
+    scene_dir = tmp_path / "pilliga" / "t009" / "20240603"
+    scene_dir.mkdir(parents=True)
+    (scene_dir / "ga_x_VH-gamma0.tif").write_text("not a geotiff")
+    assert runner.crs_for(scene_dir / "S1A_IW_GRDH_x.zip") == "EPSG:32756"
 
 
 def test_crs_override_wins(tmp_path: Path):

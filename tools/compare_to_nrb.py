@@ -38,7 +38,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from measure_shift import (  # noqa: E402
     MeasureError,
     align,
-    centred_patch,
+    common_patch,
     phase_correlate,
     prepare,
     resolve_band,
@@ -118,9 +118,8 @@ def compare(pair: Pair, patch: int = 512) -> Result:
     corr = float(np.corrcoef(ga[usable], snap[usable])[0, 1])
 
     try:
-        row_shift, col_shift, _ = phase_correlate(
-            prepare(centred_patch(ga, patch)), prepare(centred_patch(snap, patch))
-        )
+        ga_patch, snap_patch = common_patch(ga, snap, patch)
+        row_shift, col_shift, _ = phase_correlate(prepare(ga_patch), prepare(snap_patch))
     except MeasureError:
         row_shift = col_shift = 0  # too little valid data in the centre to correlate
 
