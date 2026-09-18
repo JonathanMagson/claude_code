@@ -59,10 +59,13 @@ python tools/run_snap_grd.py D:\scratch\sentinel_1_data_project\before_after --d
 One variant, for real:
 
 ```
-python tools/run_snap_grd.py D:\scratch\sentinel_1_data_project\before_after ^
-    --variant grd_gamma0_rtc ^
-    --gpt "C:\Program Files\esa-snap\bin\gpt.exe"
+python tools/run_snap_grd.py D:\scratch\sentinel_1_data_project\before_after --variant grd_gamma0_rtc
 ```
+
+`--gpt` is optional: the runner checks PATH, then the usual SNAP install
+locations, including the user-scope directory under `LOCALAPPDATA` that SNAP's
+Windows installer falls back to when it cannot write to Program Files. It prints
+which one it picked. Pass `--gpt` explicitly if you have several SNAP versions.
 
 Useful flags: `--print-commands` emits `cmd.exe` one-liners instead of running
 anything; `--overwrite` re-runs finished jobs; `--crs` overrides the projection

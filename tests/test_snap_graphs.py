@@ -322,3 +322,40 @@ def test_diagnostic_graph_stops_before_geocoding_and_emits_the_simulation():
     assert "Terrain-Correction" not in known, "the diagnostic must stay in radar geometry"
     assert parameter(known["Terrain-Flattening"], "outputSimulatedImage") == "true"
     assert known["Write"].find("sources/sourceProduct").get("refid") == "Terrain-Flattening"
+
+
+# --- locating SNAP ----------------------------------------------------------
+
+
+def test_locate_gpt_accepts_an_explicit_path(tmp_path: Path):
+    gpt = tmp_path / "gpt.exe"
+    gpt.touch()
+    assert runner.locate_gpt(str(gpt)) == str(gpt)
+
+
+def test_locate_gpt_rejects_a_bad_explicit_path(tmp_path: Path):
+    with pytest.raises(runner.ConfigError, match="not found"):
+        runner.locate_gpt(str(tmp_path / "nope.exe"))
+
+
+def test_locate_gpt_finds_a_user_scope_windows_install(tmp_path: Path, monkeypatch):
+    """Without admin rights SNAP installs under LOCALAPPDATA, which is not on
+    PATH and not in Program Files."""
+    gpt = tmp_path / "snap" / "bin" / "gpt.exe"
+    gpt.parent.mkdir(parents=True)
+    gpt.touch()
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    monkeypatch.setattr(runner.shutil, "which", lambda _: None)
+    assert runner.locate_gpt() == str(gpt)
+
+
+def test_locate_gpt_prefers_path_over_the_candidate_list(monkeypatch):
+    monkeypatch.setattr(runner.shutil, "which", lambda _: "/usr/bin/gpt")
+    assert runner.locate_gpt() == "/usr/bin/gpt"
+
+
+def test_locate_gpt_reports_where_it_looked(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    monkeypatch.setattr(runner.shutil, "which", lambda _: None)
+    with pytest.raises(runner.ConfigError, match="Looked in"):
+        runner.locate_gpt()

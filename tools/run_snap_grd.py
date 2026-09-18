@@ -34,6 +34,7 @@ Emit cmd.exe one-liners instead of running them::
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shutil
 import subprocess
@@ -60,8 +61,48 @@ AOI_CRS = {
 }
 
 
+# SNAP installs wherever it can. Without admin rights its Windows installer
+# falls back under LOCALAPPDATA, which is not on PATH and not in Program Files.
+GPT_CANDIDATES = (
+    "{localappdata}/snap/bin/gpt.exe",
+    "{localappdata}/esa-snap/bin/gpt.exe",
+    "{localappdata}/Programs/snap/bin/gpt.exe",
+    "{localappdata}/Programs/esa-snap/bin/gpt.exe",
+    "C:/Program Files/snap/bin/gpt.exe",
+    "C:/Program Files/esa-snap/bin/gpt.exe",
+    "{home}/snap/bin/gpt",
+    "{home}/esa-snap/bin/gpt",
+    "/opt/snap/bin/gpt",
+    "/opt/esa-snap/bin/gpt",
+    "/usr/local/snap/bin/gpt",
+)
+
+
 class ConfigError(RuntimeError):
     """Raised when the run cannot be set up (bad paths, unknown variant, no CRS)."""
+
+
+def locate_gpt(explicit: Optional[str] = None) -> str:
+    """Resolve the SNAP gpt executable, or explain where it was looked for."""
+    if explicit:
+        if Path(explicit).exists() or shutil.which(explicit):
+            return explicit
+        raise ConfigError(f"gpt not found at {explicit}")
+    found = shutil.which("gpt")
+    if found:
+        return found
+    localappdata = os.environ.get("LOCALAPPDATA", "")
+    home = str(Path.home())
+    searched = []
+    for template in GPT_CANDIDATES:
+        candidate = Path(template.format(localappdata=localappdata, home=home))
+        searched.append(str(candidate))
+        if candidate.exists():
+            return str(candidate)
+    raise ConfigError(
+        "SNAP's gpt was not found on PATH or in any usual install location.\n"
+        "Pass it explicitly with --gpt. Looked in:\n  " + "\n  ".join(searched)
+    )
 
 
 def graphs_dir(explicit: Optional[str] = None) -> Path:
@@ -182,7 +223,8 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         help="graph to run (repeatable). Default: every graph in graphs/",
     )
     parser.add_argument("--graphs", help="directory holding the graph XML (default: <repo>/graphs)")
-    parser.add_argument("--gpt", default="gpt", help="path to the SNAP gpt executable")
+    parser.add_argument("--gpt", help="path to the SNAP gpt executable "
+                                     "(default: PATH, then the usual install locations)")
     parser.add_argument("--crs", help="override the projection, e.g. EPSG:32755")
     parser.add_argument("--spacing", default=DEFAULT_SPACING, help=f"output pixel spacing in metres (default {DEFAULT_SPACING})")
     parser.add_argument("--oversampling", default=DEFAULT_OVERSAMPLING,
@@ -219,13 +261,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 1
 
     planning_only = args.dry_run or args.print_commands
-    if not planning_only and shutil.which(args.gpt) is None and not Path(args.gpt).exists():
-        print(
-            f"error: gpt not found ({args.gpt}). Point --gpt at it, e.g.\n"
-            r'  --gpt "C:\Program Files\esa-snap\bin\gpt.exe"',
-            file=sys.stderr,
-        )
-        return 2
+    try:
+        gpt = locate_gpt(args.gpt)
+    except ConfigError as exc:
+        if not planning_only:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        gpt = args.gpt or "gpt"  # planning only, so a real gpt is not needed yet
+    else:
+        if not args.gpt:
+            print(f"using gpt: {gpt}")
 
     # The diagnostic graph stops before terrain correction, so it needs no CRS.
     # Don't make an unrecognised AOI folder an error for a run that never geocodes.
@@ -253,7 +298,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     for index, (scene, variant, target, crs) in enumerate(jobs, start=1):
         try:
             command = build_command(
-                args.gpt,
+                gpt,
                 directory / f"{variant}.xml",
                 args.memory,
                 args.threads,
