@@ -173,11 +173,18 @@ def describe(row_shift: int, col_shift: int, pixel: float) -> str:
 def align(reference_path: Path, target_path: Path):
     """Put *target* on *reference*'s exact grid over the area they share.
 
-    Returns (reference_array, target_array, pixel_size, (cols, rows)). Both
-    arrays are linear power with NaN for no data, on identical grids, so a
+    Returns (reference_array, target_array, pixel_size, (cols, rows), reprojected).
+    Both arrays are linear power with NaN for no data, on identical grids, so a
     difference between them is a real difference and not a gridding artefact.
+
+    ``reprojected`` flags that the two products were in different projections
+    and the target had to be reprojected as well as resampled. That is worth
+    surfacing: it means an extra interpolation was applied to one product and
+    not the other, which is not what you want when measuring one against the
+    other.
     """
     with rasterio.open(reference_path) as reference, rasterio.open(target_path) as target:
+        reprojected = reference.crs != target.crs
         row0, col0, rows, cols = overlap_window(
             reference, transform_bounds(target.crs, reference.crs, *target.bounds)
         )
@@ -198,17 +205,20 @@ def align(reference_path: Path, target_path: Path):
             resampling=Resampling.bilinear,
         )
         pixel = abs(reference_transform.a)
-    return reference_data, resampled, pixel, (cols, rows)
+    return reference_data, resampled, pixel, (cols, rows), reprojected
 
 
 def measure(reference_path: Path, target_path: Path, patch: int = DEFAULT_PATCH):
-    reference_data, resampled, pixel, shape = align(reference_path, target_path)
+    reference_data, resampled, pixel, shape, reprojected = align(reference_path, target_path)
     reference_patch, target_patch = common_patch(
         to_db(reference_data), to_db(resampled), patch
     )
     row_shift, col_shift, sharpness = phase_correlate(
         prepare(reference_patch), prepare(target_patch)
     )
+    if reprojected:
+        print("note: the two products are in different projections; "
+              "the target was reprojected as well as resampled")
     return row_shift, col_shift, sharpness, pixel, shape
 
 

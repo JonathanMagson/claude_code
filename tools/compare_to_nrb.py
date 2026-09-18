@@ -69,6 +69,7 @@ class Result(NamedTuple):
     corr: float
     row_shift: int
     col_shift: int
+    reprojected: bool
 
 
 def find_pairs(root: Path, variant: str, filtered: bool = False) -> Iterator[Pair]:
@@ -99,7 +100,7 @@ def find_pairs(root: Path, variant: str, filtered: bool = False) -> Iterator[Pai
 
 
 def compare(pair: Pair, patch: int = 512) -> Result:
-    reference, target, _, shape = align(pair.reference, pair.target)
+    reference, target, _, shape, reprojected = align(pair.reference, pair.target)
     ga = to_db(reference)
     snap = to_db(target)
 
@@ -134,6 +135,7 @@ def compare(pair: Pair, patch: int = 512) -> Result:
         corr=corr,
         row_shift=row_shift,
         col_shift=col_shift,
+        reprojected=reprojected,
     )
 
 
@@ -211,6 +213,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     biases = [r.bias for r in results]
     print(f"\n{len(results)} pair(s). Median bias {np.median(biases):+.2f} dB "
           f"(range {min(biases):+.2f} to {max(biases):+.2f}).")
+    mismatched = sorted({r.pair.aoi for r in results if r.reprojected})
+    if mismatched:
+        print(f"\nProjection mismatch in: {', '.join(mismatched)}. The SNAP output is not")
+        print("in the same CRS as the GA product, so it was reprojected as well as")
+        print("resampled - an extra interpolation applied to these AOIs and not the")
+        print("others. Reprocess them (--overwrite) to take GA's projection at source.")
     if any(r.row_shift or r.col_shift for r in results):
         print("Non-zero shift on at least one pair: the products are not co-registered,")
         print("so the bias and RMSE above include a misregistration component.")

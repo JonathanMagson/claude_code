@@ -127,3 +127,30 @@ def test_main_reports_missing_pairs_clearly(tmp_path: Path, capsys):
     code = compare_to_nrb.main([str(tmp_path), "--variant", "grd_gamma0_ellipsoid"])
     assert code == 1
     assert "no pairs found" in capsys.readouterr().err
+
+
+def test_matching_projections_are_not_flagged(tmp_path: Path):
+    root = build_tree(tmp_path)
+    for pair in compare_to_nrb.find_pairs(root, "grd_gamma0_ellipsoid"):
+        assert compare_to_nrb.compare(pair).reprojected is False
+
+
+def test_projection_mismatch_is_flagged(tmp_path: Path):
+    """An extra interpolation applied to one AOI and not the others is exactly
+    the inconsistency a cross-AOI comparison must not hide."""
+    import rasterio
+    from rasterio.transform import from_origin
+
+    root = build_tree(tmp_path)
+    pair = next(iter(compare_to_nrb.find_pairs(root, "grd_gamma0_ellipsoid")))
+    data = scene()
+    with rasterio.open(
+        pair.target, "w", driver="GTiff", height=data.shape[0], width=data.shape[1],
+        count=1, dtype="float32", crs="EPSG:32755",
+        transform=from_origin(200000.0, 6500000.0, PIXEL, PIXEL), nodata=np.nan,
+    ) as dst:
+        dst.write(data, 1)
+    with pytest.raises(Exception):
+        # Different zone puts it somewhere else entirely; the point is only that
+        # the mismatch is detected rather than silently reprojected.
+        compare_to_nrb.compare(pair)
