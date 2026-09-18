@@ -178,10 +178,34 @@ python tools/compare_to_nrb.py <root> --variant grd_gamma0_ellipsoid --csv compa
 
 | Column | Meaning |
 |---|---|
-| `bias` | median(SNAP - GA) in dB. The systematic offset; the headline number. |
-| `rmse` | spread of the difference. Includes speckle, so never small. |
+| `bias` | median(SNAP - GA) in dB. Moves with effective look count, so not a calibration figure on its own. |
+| `gain` | the same offset on linear power, where the mean is unbiased by look count. **Quote this for calibration.** |
+| `rmse` | spread of the difference in dB. Where a missing terrain correction shows up. |
 | `corr` | Pearson correlation of the two dB images. Structure agreement. |
-| `shift` | geolocation offset in whole pixels. Non-zero means the bias is contaminated by misregistration. |
+| `shift` | geolocation offset in whole pixels. Non-zero means the radiometry is contaminated by misregistration. |
+
+**Read the spread, not the offset, for terrain.** RTC redistributes energy per
+pixel -- slopes facing the sensor down, slopes facing away up -- so over a scene
+it largely cancels in the median and leaves `bias` near zero however rugged the
+ground is. It inflates `rmse` and depresses `corr` instead. Measured on these
+six scenes with no terrain flattening, against the GA NRB:
+
+| AOI | bias | rmse | corr |
+|---|---|---|---|
+| Pilliga (flat) | +0.30 | 2.0 | 0.70 |
+| Hunter (undulating) | +0.40 | 2.6 | 0.53 |
+| Blue Mountains (steep) | +0.28 | 3.4 | 0.48 |
+
+`bias` carries no terrain signal at all; `rmse` and `corr` order by terrain
+monotonically. Note this ordering is consistent with RTC driving it but does not
+prove it: rugged terrain also decorrelates more from sub-pixel registration
+differences and from higher scene contrast.
+
+**Why both `bias` and `gain`.** Speckle is skewed, so the median sits below the
+mean, and a product with more looks has a higher median in dB at identical true
+backscatter. Comparing medians in dB across products with different look counts
+reads that as a calibration offset. The linear mean does not move with looks. If
+the two disagree, the difference between them is the look-count artefact.
 
 Pass `--filtered` when the SNAP variant applies a speckle filter: it then pairs
 against the `_sf_db` rasters from `postprocess_nrb.py` instead of the raw NRB.

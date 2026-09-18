@@ -7,8 +7,16 @@ share, and reports how far apart they are radiometrically and geometrically.
 
 Reported per pair, in dB over the valid overlap:
 
-  bias    median(SNAP - GA). The systematic offset. This is the headline number.
-  rmse    spread of the difference. Includes speckle, so it is never small.
+  bias    median(SNAP - GA) in dB. Sensitive to how many looks each product
+          carries: speckle is skewed, so a product with more looks has a higher
+          median in dB even at identical true backscatter. Do not read a small
+          bias as a calibration difference without checking `gain`.
+  gain    10*log10(mean linear SNAP / mean linear GA). The same offset measured
+          on linear power, where the mean is unbiased by look count. This is the
+          number to quote for calibration agreement.
+  rmse    spread of the difference in dB. Where a missing terrain correction
+          shows up: RTC redistributes energy per pixel rather than shifting the
+          scene mean, so it inflates the spread while leaving bias near zero.
   corr    Pearson correlation of the two dB images. Structure agreement.
   shift   geolocation offset in whole pixels, from phase correlation.
 
@@ -65,6 +73,7 @@ class Result(NamedTuple):
     ga_median: float
     snap_median: float
     bias: float
+    gain: float
     rmse: float
     corr: float
     row_shift: int
@@ -115,6 +124,13 @@ def compare(pair: Pair, patch: int = 512) -> Result:
 
     difference = snap[usable] - ga[usable]
     bias = float(np.median(difference))
+    # Same comparison on linear power. The mean of linear power does not move
+    # with look count, so this separates a real calibration offset from the
+    # median-in-dB artefact that differing looks produce.
+    ga_power = np.asarray(reference)[usable]
+    snap_power = np.asarray(target)[usable]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        gain = float(10.0 * np.log10(np.mean(snap_power) / np.mean(ga_power)))
     rmse = float(np.sqrt(np.mean(difference ** 2)))
     corr = float(np.corrcoef(ga[usable], snap[usable])[0, 1])
 
@@ -131,6 +147,7 @@ def compare(pair: Pair, patch: int = 512) -> Result:
         ga_median=float(np.median(ga[usable])),
         snap_median=float(np.median(snap[usable])),
         bias=bias,
+        gain=gain,
         rmse=rmse,
         corr=corr,
         row_shift=row_shift,
@@ -144,14 +161,14 @@ def write_csv(path: Path, results: Sequence[Result]) -> None:
         writer = csv.writer(handle)
         writer.writerow([
             "aoi", "date", "pol", "valid_px", "coverage",
-            "ga_median_db", "snap_median_db", "bias_db", "rmse_db", "corr",
+            "ga_median_db", "snap_median_db", "bias_db", "gain_db", "rmse_db", "corr",
             "row_shift_px", "col_shift_px", "reference", "target",
         ])
         for r in results:
             writer.writerow([
                 r.pair.aoi, r.pair.date, r.pair.pol, r.valid, f"{r.coverage:.4f}",
                 f"{r.ga_median:.2f}", f"{r.snap_median:.2f}", f"{r.bias:.2f}",
-                f"{r.rmse:.2f}", f"{r.corr:.3f}", r.row_shift, r.col_shift,
+                f"{r.gain:.2f}", f"{r.rmse:.2f}", f"{r.corr:.3f}", r.row_shift, r.col_shift,
                 r.pair.reference.name, r.pair.target.name,
             ])
 
@@ -190,7 +207,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 1
 
     print(f"{'AOI':10} {'DATE':10} {'POL':4} {'COVER':>6} {'GA dB':>7} {'SNAP dB':>8} "
-          f"{'BIAS':>7} {'RMSE':>6} {'CORR':>6} {'SHIFT px':>9}")
+          f"{'BIAS':>7} {'GAIN':>7} {'RMSE':>6} {'CORR':>6} {'SHIFT px':>9}")
     results = []
     for pair in pairs:
         try:
@@ -202,7 +219,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(
             f"{result.pair.aoi:10} {result.pair.date:10} {result.pair.pol:4} "
             f"{result.coverage:>5.1%} {result.ga_median:>7.2f} {result.snap_median:>8.2f} "
-            f"{result.bias:>+7.2f} {result.rmse:>6.2f} {result.corr:>6.3f} "
+            f"{result.bias:>+7.2f} {result.gain:>+7.2f} {result.rmse:>6.2f} {result.corr:>6.3f} "
             f"{result.row_shift:>+4d},{result.col_shift:>+4d}"
         )
 
@@ -211,8 +228,25 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 1
 
     biases = [r.bias for r in results]
+    gains = [r.gain for r in results]
     print(f"\n{len(results)} pair(s). Median bias {np.median(biases):+.2f} dB "
-          f"(range {min(biases):+.2f} to {max(biases):+.2f}).")
+          f"(range {min(biases):+.2f} to {max(biases):+.2f}); "
+          f"median gain {np.median(gains):+.2f} dB "
+          f"(range {min(gains):+.2f} to {max(gains):+.2f}).")
+    if abs(np.median(biases) - np.median(gains)) > 0.15:
+        print("bias and gain disagree: much of the dB offset is a difference in")
+        print("effective looks, not in calibration. Quote gain.")
+
+    by_aoi = {}
+    for r in results:
+        by_aoi.setdefault(r.pair.aoi, []).append(r)
+    if len(by_aoi) > 1:
+        print("\nPer AOI (RMSE and CORR are where a missing terrain correction shows):")
+        for aoi, group in sorted(by_aoi.items(), key=lambda kv: np.median([r.rmse for r in kv[1]])):
+            print(f"  {aoi:10} bias {np.median([r.bias for r in group]):+.2f}  "
+                  f"gain {np.median([r.gain for r in group]):+.2f}  "
+                  f"rmse {np.median([r.rmse for r in group]):.2f}  "
+                  f"corr {np.median([r.corr for r in group]):.3f}")
     mismatched = sorted({r.pair.aoi for r in results if r.reprojected})
     if mismatched:
         print(f"\nProjection mismatch in: {', '.join(mismatched)}. The SNAP output is not")

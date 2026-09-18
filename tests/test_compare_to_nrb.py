@@ -154,3 +154,48 @@ def test_projection_mismatch_is_flagged(tmp_path: Path):
         # Different zone puts it somewhere else entirely; the point is only that
         # the mismatch is detected rather than silently reprojected.
         compare_to_nrb.compare(pair)
+
+
+@pytest.mark.parametrize("gain_db", [2.0, -3.5])
+def test_gain_recovers_a_real_calibration_offset(tmp_path: Path, gain_db: float):
+    """A pure multiplicative gain must show identically in bias and in gain."""
+    root = build_tree(tmp_path, gain_db=gain_db)
+    for pair in compare_to_nrb.find_pairs(root, "grd_gamma0_ellipsoid"):
+        result = compare_to_nrb.compare(pair)
+        assert result.gain == pytest.approx(gain_db, abs=0.05)
+        assert result.bias == pytest.approx(gain_db, abs=0.05)
+
+
+def test_gain_is_unmoved_by_look_count_while_bias_is_not(tmp_path: Path):
+    """The point of reporting both.
+
+    Two products of the same scene at different effective looks have the same
+    mean linear power but different medians in dB, because speckle is skewed.
+    A median-in-dB comparison reads that as a calibration offset; the linear
+    mean does not.
+    """
+    import rasterio
+    from rasterio.transform import from_origin
+
+    rng = np.random.default_rng(7)
+    size = 600
+    truth = np.full((size, size), 0.05, dtype="float32")
+
+    def speckle(looks: int) -> np.ndarray:
+        return (truth * rng.gamma(shape=looks, scale=1.0 / looks, size=(size, size))).astype("float32")
+
+    root = build_tree(tmp_path)
+    pair = next(iter(compare_to_nrb.find_pairs(root, "grd_gamma0_ellipsoid")))
+    for path, looks in ((pair.reference, 2), (pair.target, 16)):
+        with rasterio.open(
+            path, "w", driver="GTiff", height=size, width=size, count=1,
+            dtype="float32", crs=CRS, transform=from_origin(500000.0, 6500000.0, PIXEL, PIXEL),
+            nodata=np.nan,
+        ) as dst:
+            dst.write(speckle(looks), 1)
+
+    result = compare_to_nrb.compare(pair)
+    # Same underlying backscatter, so the linear means agree...
+    assert result.gain == pytest.approx(0.0, abs=0.15)
+    # ...but the better-looked product has the higher median in dB.
+    assert result.bias > 0.5
