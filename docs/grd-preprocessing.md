@@ -160,6 +160,28 @@ It is a diagnostic, not a replacement: on slopes it differs from the GA NRB by
 several dB, and the error is correlated with the terrain, which is exactly the
 signal most analyses are trying to measure.
 
+## Comparing against the GA NRB
+
+`tools/compare_to_nrb.py` walks the tree, pairs every GA NRB raster with the
+SNAP band for the same scene and polarisation, puts both on the GA grid over
+their shared area, and reports the difference:
+
+```
+python tools/compare_to_nrb.py <root> --variant grd_gamma0_ellipsoid --csv comparison.csv
+```
+
+| Column | Meaning |
+|---|---|
+| `bias` | median(SNAP - GA) in dB. The systematic offset; the headline number. |
+| `rmse` | spread of the difference. Includes speckle, so never small. |
+| `corr` | Pearson correlation of the two dB images. Structure agreement. |
+| `shift` | geolocation offset in whole pixels. Non-zero means the bias is contaminated by misregistration. |
+
+Pass `--filtered` when the SNAP variant applies a speckle filter: it then pairs
+against the `_sf_db` rasters from `postprocess_nrb.py` instead of the raw NRB.
+Filtered-against-raw attributes your filter's smoothing to a processing
+difference, so the tool refuses to mix them by accident.
+
 ## Measuring a geolocation offset
 
 "The scene looks slightly south" is not actionable. `tools/measure_shift.py`

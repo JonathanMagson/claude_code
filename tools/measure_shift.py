@@ -143,22 +143,24 @@ def describe(row_shift: int, col_shift: int, pixel: float) -> str:
     return " and ".join(parts) if parts else "no measurable offset"
 
 
-def measure(reference_path: Path, target_path: Path, patch: int = DEFAULT_PATCH):
+def align(reference_path: Path, target_path: Path):
+    """Put *target* on *reference*'s exact grid over the area they share.
+
+    Returns (reference_array, target_array, pixel_size, (cols, rows)). Both
+    arrays are linear power with NaN for no data, on identical grids, so a
+    difference between them is a real difference and not a gridding artefact.
+    """
     with rasterio.open(reference_path) as reference, rasterio.open(target_path) as target:
-        if reference.crs != target.crs:
-            print(f"note: reprojecting target from {target.crs} to {reference.crs}")
         row0, col0, rows, cols = overlap_window(
             reference, transform_bounds(target.crs, reference.crs, *target.bounds)
         )
         if rows < 32 or cols < 32:
-            raise MeasureError(f"overlap is only {cols}x{rows} pixels -- too small to correlate")
+            raise MeasureError(f"overlap is only {cols}x{rows} pixels -- too small to compare")
 
         window = Window(col0, row0, cols, rows)
         reference_data = reference.read(1, window=window, masked=True).filled(np.nan)
         reference_transform = reference.window_transform(window)
 
-        # Put the target on the reference's exact grid so a measured shift is real
-        # displacement rather than a difference in gridding.
         resampled = np.full((rows, cols), np.nan, dtype="float32")
         reproject(
             source=rasterio.band(target, 1),
@@ -169,11 +171,15 @@ def measure(reference_path: Path, target_path: Path, patch: int = DEFAULT_PATCH)
             resampling=Resampling.bilinear,
         )
         pixel = abs(reference_transform.a)
+    return reference_data, resampled, pixel, (cols, rows)
 
+
+def measure(reference_path: Path, target_path: Path, patch: int = DEFAULT_PATCH):
+    reference_data, resampled, pixel, shape = align(reference_path, target_path)
     reference_patch = prepare(centred_patch(to_db(reference_data), patch))
     target_patch = prepare(centred_patch(to_db(resampled), patch))
     row_shift, col_shift, sharpness = phase_correlate(reference_patch, target_patch)
-    return row_shift, col_shift, sharpness, pixel, (cols, rows)
+    return row_shift, col_shift, sharpness, pixel, shape
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
