@@ -121,6 +121,21 @@ It is a diagnostic, not a replacement: on slopes it differs from the GA NRB by
 several dB, and the error is correlated with the terrain, which is exactly the
 signal most analyses are trying to measure.
 
+## Measuring a geolocation offset
+
+"The scene looks slightly south" is not actionable. `tools/measure_shift.py`
+phase-correlates a SNAP output against the GA NRB over the area they share and
+reports the offset in pixels and metres:
+
+```
+python tools/measure_shift.py --reference <GA ..._VH-gamma0.tif> --target <SNAP .dim>
+```
+
+The direction is the diagnosis. Sentinel-1 flies a near-polar orbit, so a DEM
+height error displaces pixels **across-track** (roughly east-west), while orbit
+timing and the geocoding move them **along-track** (roughly north-south). A
+north-south offset therefore largely exonerates the DEM and terrain flattening.
+
 ## Notes
 
 - `Apply-Orbit-File` uses `continueOnFail=false`. See "Debugging terrain
