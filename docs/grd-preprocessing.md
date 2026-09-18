@@ -25,9 +25,10 @@ before_after/pilliga/t009_019142_iw1/20240603/
 | `grd_sigma0_ellipsoid` | sigma0 | none | **no** | yes | sigma0, ellipsoid |
 | `grd_tf_diagnostic` | beta0 | none | yes | **no** | flattened + simulated image |
 
-`grd_gamma0_rtc` is the baseline: it is the closest SNAP equivalent to the GA
-NRB, so it is what any "how does my processing compare to GA's" question should
-be asked against. The two `_ellipsoid` graphs are controls that show what
+**Use `grd_gamma0_ellipsoid` for now.** `grd_gamma0_rtc` is in principle the
+closest SNAP equivalent to the GA NRB, but SNAP's Terrain-Flattening on these
+GRD products displaces the output geographically -- see "Terrain flattening
+shifts GRD geolocation" below. The two `_ellipsoid` graphs are controls that show what
 terrain flattening buys you over plain terrain correction; `grd_gamma0_ellipsoid`
 is also the "turn flattening off for now" option, since it keeps the gamma0
 convention and so stays at least dimensionally comparable to the GA product.
@@ -72,6 +73,35 @@ anything; `--overwrite` re-runs finished jobs; `--crs` overrides the projection
 that is otherwise inferred from the AOI folder name; `--list-variants` shows
 what is available. Finished jobs are skipped automatically, and a `.dim` with no
 matching `.data/` counts as unfinished rather than done.
+
+## Terrain flattening shifts GRD geolocation
+
+Confirmed on the Pilliga scenes, 2025-09: running `grd_gamma0_rtc` produced a
+product displaced slightly south of the GA NRB, with edge artefacts. Running the
+identical graph without Terrain-Flattening (`grd_gamma0_ellipsoid`) removed both.
+Precise orbits were confirmed applied in both runs, so this is not the orbit.
+
+This is worth writing down because the obvious reasoning is wrong. Terrain
+flattening is usually described as a radiometric correction, and Sentinel-1's
+near-polar orbit means a DEM height error displaces pixels across-track
+(east-west) rather than along-track (north-south) -- which together suggest
+flattening could not cause a southward shift. It did. SNAP's Terrain-Flattening
+resamples into the geometry of the DEM-derived simulated image, so it moves
+pixels as well as rescaling them, and on GRD the result is not guaranteed to
+come back to where it started.
+
+**What this costs.** `grd_gamma0_ellipsoid` is gamma0 from the ellipsoid
+incidence angle, not radiometrically terrain-flattened. Against the GA NRB it
+will differ on slopes by several dB, and the difference is correlated with the
+terrain -- steeply so in the Blue Mountains, much less in the Pilliga. Any
+comparison has to state that, because it is exactly the quantity RTC exists to
+remove.
+
+**The likely real fix** is to stop using GRD. GA derives its NRB from SLC
+bursts, where terrain flattening is well posed; on GRD the ground-range
+detection has already happened before the terrain is accounted for, so SNAP's
+implementation is an approximation to begin with. The matching SLCs are already
+downloaded alongside each GRD.
 
 ## Debugging terrain flattening
 
