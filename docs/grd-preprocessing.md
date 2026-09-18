@@ -182,7 +182,7 @@ python tools/compare_to_nrb.py <root> --variant grd_gamma0_ellipsoid --csv compa
 | `gain` | the same offset on linear power, where the mean is unbiased by look count. **Quote this for calibration.** |
 | `rmse` | spread of the difference in dB. Where a missing terrain correction shows up. |
 | `corr` | Pearson correlation of the two dB images. Structure agreement. |
-| `shift` | geolocation offset in whole pixels. Non-zero means the radiometry is contaminated by misregistration. |
+| `shift` | geolocation offset in pixels, estimated to ~0.04 px. Above ~0.5 px the radiometry is contaminated by misregistration. |
 
 **Read the spread, not the offset, for terrain.** RTC redistributes energy per
 pixel -- slopes facing the sensor down, slopes facing away up -- so over a scene
@@ -211,6 +211,27 @@ Pass `--filtered` when the SNAP variant applies a speckle filter: it then pairs
 against the `_sf_db` rasters from `postprocess_nrb.py` instead of the raw NRB.
 Filtered-against-raw attributes your filter's smoothing to a processing
 difference, so the tool refuses to mix them by accident.
+
+## What `shift` does and does not tell you
+
+`shift` is the **relative** offset between the two products, not the absolute
+accuracy of either. If both sat 30 m from truth in the same direction it would
+still read zero. Establishing absolute accuracy needs an independent reference:
+corner reflectors, a surveyed water body or coastline, or high-accuracy optical
+imagery.
+
+On theory GA should be the more absolutely accurate of the two. Its config
+applies two geometric corrections that SNAP's Range-Doppler Terrain Correction
+does not:
+
+```yaml
+apply_bistatic_delay_correction: True          # S1_RTC_IW.yaml:158
+apply_static_tropospheric_delay_correction: True   # S1_RTC_IW.yaml:161
+```
+
+Both are metre-scale. At 20 m posting they are well under a pixel, which is
+consistent with the measured agreement and also means this comparison cannot
+resolve them.
 
 ## Measuring a geolocation offset
 

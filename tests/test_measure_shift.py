@@ -31,7 +31,7 @@ def speckled_scene(size: int = 768, seed: int = 0) -> np.ndarray:
     return (scene[:size, :size] * rng.gamma(shape=8.0, scale=0.125, size=(size, size))).astype("float32")
 
 
-def write(path: Path, data: np.ndarray, row_offset: int = 0, col_offset: int = 0) -> Path:
+def write(path: Path, data: np.ndarray, row_offset: float = 0.0, col_offset: float = 0.0) -> Path:
     """Write *data* georeferenced so that it sits row/col_offset from the origin."""
     transform = from_origin(
         ORIGIN_X + col_offset * PIXEL, ORIGIN_Y - row_offset * PIXEL, PIXEL, PIXEL
@@ -49,7 +49,7 @@ def test_no_shift_is_reported_as_none(tmp_path: Path):
     reference = write(tmp_path / "ref.tif", scene)
     target = write(tmp_path / "tgt.tif", scene)
     rows, cols, sharpness, pixel, _ = measure_shift.measure(reference, target)
-    assert (rows, cols) == (0, 0)
+    assert (rows, cols) == pytest.approx((0.0, 0.0), abs=0.05)
     assert pixel == PIXEL
     assert sharpness > 8
 
@@ -65,17 +65,27 @@ def test_a_known_shift_is_recovered(tmp_path: Path, row_offset: int, col_offset:
     reference = write(tmp_path / "ref.tif", scene)
     target = write(tmp_path / "tgt.tif", scene, row_offset=row_offset, col_offset=col_offset)
     rows, cols, sharpness, _, _ = measure_shift.measure(reference, target)
-    assert (rows, cols) == (row_offset, col_offset)
+    assert (rows, cols) == pytest.approx((row_offset, col_offset), abs=0.05)
     assert sharpness > 8
 
 
 def test_describe_names_the_direction():
-    assert measure_shift.describe(4, 0, 20.0) == "80 m south"
-    assert measure_shift.describe(-4, 0, 20.0) == "80 m north"
-    assert measure_shift.describe(0, 5, 20.0) == "100 m east"
-    assert measure_shift.describe(0, -5, 20.0) == "100 m west"
-    assert measure_shift.describe(2, -3, 20.0) == "40 m south and 60 m west"
+    assert measure_shift.describe(4, 0, 20.0) == "80.0 m south"
+    assert measure_shift.describe(-4, 0, 20.0) == "80.0 m north"
+    assert measure_shift.describe(0, 5, 20.0) == "100.0 m east"
+    assert measure_shift.describe(0, -5, 20.0) == "100.0 m west"
+    assert measure_shift.describe(2, -3, 20.0) == "40.0 m south and 60.0 m west"
     assert measure_shift.describe(0, 0, 20.0) == "no measurable offset"
+
+
+def test_describe_reports_sub_pixel_offsets():
+    """A quarter of a 20 m pixel is 5 m, which is worth naming."""
+    assert measure_shift.describe(0.25, 0, 20.0) == "5.0 m south"
+    assert measure_shift.describe(0, -0.35, 20.0) == "7.0 m west"
+
+
+def test_describe_ignores_fit_noise():
+    assert measure_shift.describe(0.01, -0.02, 20.0) == "no measurable offset"
 
 
 def test_non_overlapping_rasters_are_an_error(tmp_path: Path):
@@ -196,5 +206,18 @@ def test_shift_is_still_recovered_when_the_centre_is_empty(tmp_path: Path):
     reference = write(tmp_path / "ref.tif", framed)
     target = write(tmp_path / "tgt.tif", framed, row_offset=3, col_offset=-2)
     rows, cols, sharpness, _, _ = measure_shift.measure(reference, target, patch=256)
-    assert (rows, cols) == (3, -2)
+    assert (rows, cols) == pytest.approx((3.0, -2.0), abs=0.05)
     assert sharpness > 8
+
+
+@pytest.mark.parametrize("row_offset,col_offset", [(0.5, 0.0), (0.0, -0.5), (2.25, -1.75), (-0.3, 0.4)])
+def test_sub_pixel_shifts_are_recovered(tmp_path: Path, row_offset: float, col_offset: float):
+    """An integer-only estimate localises to +/- half a pixel: 10 m at 20 m
+    posting, big enough to hide a real disagreement between two products."""
+    scene = speckled_scene()
+    reference = write(tmp_path / "ref.tif", scene)
+    target = write(tmp_path / "tgt.tif", scene, row_offset=row_offset, col_offset=col_offset)
+    rows, cols, sharpness, _, _ = measure_shift.measure(reference, target)
+    assert rows == pytest.approx(row_offset, abs=0.1)
+    assert cols == pytest.approx(col_offset, abs=0.1)
+    assert sharpness > 5

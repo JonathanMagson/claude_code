@@ -76,8 +76,8 @@ class Result(NamedTuple):
     gain: float
     rmse: float
     corr: float
-    row_shift: int
-    col_shift: int
+    row_shift: float
+    col_shift: float
     reprojected: bool
 
 
@@ -138,7 +138,7 @@ def compare(pair: Pair, patch: int = 512) -> Result:
         ga_patch, snap_patch = common_patch(ga, snap, patch)
         row_shift, col_shift, _ = phase_correlate(prepare(ga_patch), prepare(snap_patch))
     except MeasureError:
-        row_shift = col_shift = 0  # too little valid data in the centre to correlate
+        row_shift = col_shift = 0.0  # too little valid data in common to correlate
 
     return Result(
         pair=pair,
@@ -168,7 +168,8 @@ def write_csv(path: Path, results: Sequence[Result]) -> None:
             writer.writerow([
                 r.pair.aoi, r.pair.date, r.pair.pol, r.valid, f"{r.coverage:.4f}",
                 f"{r.ga_median:.2f}", f"{r.snap_median:.2f}", f"{r.bias:.2f}",
-                f"{r.gain:.2f}", f"{r.rmse:.2f}", f"{r.corr:.3f}", r.row_shift, r.col_shift,
+                f"{r.gain:.2f}", f"{r.rmse:.2f}", f"{r.corr:.3f}",
+                f"{r.row_shift:.3f}", f"{r.col_shift:.3f}",
                 r.pair.reference.name, r.pair.target.name,
             ])
 
@@ -220,7 +221,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             f"{result.pair.aoi:10} {result.pair.date:10} {result.pair.pol:4} "
             f"{result.coverage:>5.1%} {result.ga_median:>7.2f} {result.snap_median:>8.2f} "
             f"{result.bias:>+7.2f} {result.gain:>+7.2f} {result.rmse:>6.2f} {result.corr:>6.3f} "
-            f"{result.row_shift:>+4d},{result.col_shift:>+4d}"
+            f"{result.row_shift:>+5.2f},{result.col_shift:>+5.2f}"
         )
 
     if not results:
@@ -253,9 +254,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print("in the same CRS as the GA product, so it was reprojected as well as")
         print("resampled - an extra interpolation applied to these AOIs and not the")
         print("others. Reprocess them (--overwrite) to take GA's projection at source.")
-    if any(r.row_shift or r.col_shift for r in results):
-        print("Non-zero shift on at least one pair: the products are not co-registered,")
-        print("so the bias and RMSE above include a misregistration component.")
+    worst = max(max(abs(r.row_shift), abs(r.col_shift)) for r in results)
+    if worst > 0.5:
+        print(f"\nWorst shift {worst:.2f} px: the products are not co-registered, so the")
+        print("bias and RMSE above include a misregistration component.")
+    else:
+        print(f"\nAll pairs co-registered to better than half a pixel "
+              f"(worst {worst:.2f} px). Note this is RELATIVE agreement between the two")
+        print("products, not the absolute accuracy of either.")
 
     if args.csv:
         write_csv(Path(args.csv), results)

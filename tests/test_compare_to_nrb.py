@@ -83,7 +83,7 @@ def test_identical_rasters_report_no_bias(tmp_path: Path):
         result = compare_to_nrb.compare(pair)
         assert result.bias == pytest.approx(0.0, abs=0.01)
         assert result.corr == pytest.approx(1.0, abs=0.01)
-        assert (result.row_shift, result.col_shift) == (0, 0)
+        assert (result.row_shift, result.col_shift) == pytest.approx((0.0, 0.0), abs=0.02)
 
 
 @pytest.mark.parametrize("gain_db", [2.0, -3.5])
