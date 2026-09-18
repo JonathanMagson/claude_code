@@ -106,7 +106,7 @@ def test_all_nodata_target_is_refused(tmp_path: Path):
     root = build_tree(tmp_path)
     pair = next(iter(compare_to_nrb.find_pairs(root, "grd_gamma0_ellipsoid")))
     write(pair.target, np.full((600, 600), np.nan, dtype="float32"))
-    with pytest.raises(MeasureError, match="nothing to compare"):
+    with pytest.raises(MeasureError, match="effectively empty"):
         compare_to_nrb.compare(pair)
 
 
@@ -199,3 +199,43 @@ def test_gain_is_unmoved_by_look_count_while_bias_is_not(tmp_path: Path):
     assert result.gain == pytest.approx(0.0, abs=0.15)
     # ...but the better-looked product has the higher median in dB.
     assert result.bias > 0.5
+
+
+def test_empty_snap_output_is_named_as_such(tmp_path: Path):
+    """A failed run writes a file full of nodata. That must not be reported as
+    the two footprints missing each other."""
+    root = build_tree(tmp_path)
+    pair = next(iter(compare_to_nrb.find_pairs(root, "grd_gamma0_ellipsoid")))
+    write(pair.target, np.full((600, 600), np.nan, dtype="float32"))
+    with pytest.raises(MeasureError, match="SNAP product is effectively empty"):
+        compare_to_nrb.compare(pair)
+
+
+def test_empty_reference_is_named_as_such(tmp_path: Path):
+    root = build_tree(tmp_path)
+    pair = next(iter(compare_to_nrb.find_pairs(root, "grd_gamma0_ellipsoid")))
+    write(pair.reference, np.full((600, 600), np.nan, dtype="float32"))
+    with pytest.raises(MeasureError, match="GA raster is effectively empty"):
+        compare_to_nrb.compare(pair)
+
+
+def test_displacement_is_distinguished_from_emptiness(tmp_path: Path):
+    """Both products full of data, but valid in disjoint places."""
+    root = build_tree(tmp_path)
+    pair = next(iter(compare_to_nrb.find_pairs(root, "grd_gamma0_ellipsoid")))
+    data = scene()
+    left, right = data.copy(), data.copy()
+    left[:, 300:] = np.nan
+    right[:, :300] = np.nan
+    write(pair.reference, left)
+    write(pair.target, right)
+    with pytest.raises(MeasureError, match="not in the same places"):
+        compare_to_nrb.compare(pair)
+
+
+def test_valid_fractions_are_quoted_in_the_error(tmp_path: Path):
+    root = build_tree(tmp_path)
+    pair = next(iter(compare_to_nrb.find_pairs(root, "grd_gamma0_ellipsoid")))
+    write(pair.target, np.full((600, 600), np.nan, dtype="float32"))
+    with pytest.raises(MeasureError, match=r"GA is 100\.0% valid and SNAP is 0\.0%"):
+        compare_to_nrb.compare(pair)

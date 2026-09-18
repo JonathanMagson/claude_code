@@ -117,9 +117,24 @@ def compare(pair: Pair, patch: int = 512) -> Result:
     count = int(usable.sum())
     coverage = count / ga.size if ga.size else 0.0
     if count < 1000:
+        # Say WHICH side is empty. "Nothing overlaps" reads as a footprint
+        # problem, but an all-nodata output from a failed run looks identical
+        # until the two sides are reported separately.
+        ga_valid = float(np.isfinite(ga).mean())
+        snap_valid = float(np.isfinite(snap).mean())
+        if snap_valid < 0.01:
+            cause = ("the SNAP product is effectively empty. The run wrote a file but "
+                     "almost every pixel is nodata, so the processing failed rather "
+                     "than the footprints missing each other.")
+        elif ga_valid < 0.01:
+            cause = "the GA raster is effectively empty; check the download."
+        else:
+            cause = ("both products have data, but not in the same places. They are "
+                     "displaced relative to each other.")
         raise MeasureError(
-            f"only {count} pixels valid in both rasters; nothing to compare. "
-            "The GA burst and the GRD slice may barely overlap."
+            f"only {count} pixels valid in both, over a {shape[0]}x{shape[1]} px "
+            f"overlap where GA is {ga_valid:.1%} valid and SNAP is {snap_valid:.1%}: "
+            + cause
         )
 
     difference = snap[usable] - ga[usable]
