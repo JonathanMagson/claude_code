@@ -1,0 +1,126 @@
+<graph id="Graph">
+  <version>1.0</version>
+  <!-- Control: sigma0, terrain-CORRECTED but not terrain-FLATTENED. Shows what RTC buys you.
+
+       Templated for batch use with gpt:
+         gpt grd_sigma0_ellipsoid.xml -c 8G -q 8 \
+             -Pinput="<scene.zip>" -Poutput="<target.dim>" \
+             -Pcrs="EPSG:32755" -Pspacing="20.0" -Pdem="Copernicus 30m Global DEM"
+
+       Every ${...} placeholder MUST be supplied; gpt does not default them.
+       Output is LINEAR power (no LinearToFromdB) so it can be differenced
+       against the GA NRB before any dB conversion. -->
+  <node id="Read">
+    <operator>Read</operator>
+    <sources/>
+    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <useAdvancedOptions>false</useAdvancedOptions>
+      <file>${input}</file>
+      <copyMetadata>true</copyMetadata>
+      <bandNames/>
+      <pixelRegion>0,0,2147483647,2147483647</pixelRegion>
+      <maskNames/>
+    </parameters>
+  </node>
+  <node id="Apply-Orbit-File">
+    <operator>Apply-Orbit-File</operator>
+    <sources>
+      <sourceProduct refid="Read"/>
+    </sources>
+    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <orbitType>Sentinel Precise (Auto Download)</orbitType>
+      <polyDegree>3</polyDegree>
+      <continueOnFail>false</continueOnFail>
+    </parameters>
+  </node>
+  <node id="ThermalNoiseRemoval">
+    <operator>ThermalNoiseRemoval</operator>
+    <sources>
+      <sourceProduct refid="Apply-Orbit-File"/>
+    </sources>
+    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <selectedPolarisations>VH,VV</selectedPolarisations>
+      <removeThermalNoise>true</removeThermalNoise>
+      <outputNoise>false</outputNoise>
+      <reIntroduceThermalNoise>false</reIntroduceThermalNoise>
+    </parameters>
+  </node>
+  <node id="Remove-GRD-Border-Noise">
+    <operator>Remove-GRD-Border-Noise</operator>
+    <sources>
+      <sourceProduct refid="ThermalNoiseRemoval"/>
+    </sources>
+    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <selectedPolarisations>VH,VV</selectedPolarisations>
+      <borderLimit>500</borderLimit>
+      <trimThreshold>0.5</trimThreshold>
+    </parameters>
+  </node>
+  <node id="Calibration">
+    <operator>Calibration</operator>
+    <sources>
+      <sourceProduct refid="Remove-GRD-Border-Noise"/>
+    </sources>
+    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <sourceBands/>
+      <auxFile>Latest Auxiliary File</auxFile>
+      <externalAuxFile/>
+      <outputImageInComplex>false</outputImageInComplex>
+      <outputImageScaleInDb>false</outputImageScaleInDb>
+      <createGammaBand>false</createGammaBand>
+      <createBetaBand>false</createBetaBand>
+      <selectedPolarisations>VH,VV</selectedPolarisations>
+      <outputSigmaBand>true</outputSigmaBand>
+      <outputGammaBand>false</outputGammaBand>
+      <outputBetaBand>false</outputBetaBand>
+    </parameters>
+  </node>
+  <node id="Terrain-Correction">
+    <operator>Terrain-Correction</operator>
+    <sources>
+      <sourceProduct refid="Calibration"/>
+    </sources>
+    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <sourceBands>Sigma0_VH,Sigma0_VV</sourceBands>
+      <demName>${dem}</demName>
+      <externalDEMFile/>
+      <externalDEMNoDataValue>0.0</externalDEMNoDataValue>
+      <externalDEMApplyEGM>true</externalDEMApplyEGM>
+      <demResamplingMethod>BILINEAR_INTERPOLATION</demResamplingMethod>
+      <imgResamplingMethod>BILINEAR_INTERPOLATION</imgResamplingMethod>
+      <pixelSpacingInMeter>${spacing}</pixelSpacingInMeter>
+      <pixelSpacingInDegree>0.0</pixelSpacingInDegree>
+      <mapProjection>${crs}</mapProjection>
+      <alignToStandardGrid>true</alignToStandardGrid>
+      <standardGridOriginX>0.0</standardGridOriginX>
+      <standardGridOriginY>0.0</standardGridOriginY>
+      <nodataValueAtSea>false</nodataValueAtSea>
+      <saveDEM>false</saveDEM>
+      <saveLatLon>false</saveLatLon>
+      <saveIncidenceAngleFromEllipsoid>false</saveIncidenceAngleFromEllipsoid>
+      <saveLocalIncidenceAngle>false</saveLocalIncidenceAngle>
+      <saveProjectedLocalIncidenceAngle>false</saveProjectedLocalIncidenceAngle>
+      <saveSelectedSourceBand>true</saveSelectedSourceBand>
+      <saveLayoverShadowMask>true</saveLayoverShadowMask>
+      <outputComplex>false</outputComplex>
+      <applyRadiometricNormalization>false</applyRadiometricNormalization>
+      <saveSigmaNought>false</saveSigmaNought>
+      <saveGammaNought>false</saveGammaNought>
+      <saveBetaNought>false</saveBetaNought>
+      <incidenceAngleForSigma0>Use projected local incidence angle from DEM</incidenceAngleForSigma0>
+      <incidenceAngleForGamma0>Use projected local incidence angle from DEM</incidenceAngleForGamma0>
+      <auxFile>Latest Auxiliary File</auxFile>
+      <externalAuxFile/>
+    </parameters>
+  </node>
+  <node id="Write">
+    <operator>Write</operator>
+    <sources>
+      <sourceProduct refid="Terrain-Correction"/>
+    </sources>
+    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <file>${output}</file>
+      <formatName>BEAM-DIMAP</formatName>
+    </parameters>
+  </node>
+</graph>
