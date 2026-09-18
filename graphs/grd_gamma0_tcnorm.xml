@@ -53,32 +53,13 @@
       <trimThreshold>0.5</trimThreshold>
     </parameters>
   </node>
-  <node id="Calibration">
-    <operator>Calibration</operator>
+  <node id="Terrain-Correction">
+    <operator>Terrain-Correction</operator>
     <sources>
       <sourceProduct refid="Remove-GRD-Border-Noise"/>
     </sources>
     <parameters class="com.bc.ceres.binding.dom.XppDomElement">
       <sourceBands/>
-      <auxFile>Latest Auxiliary File</auxFile>
-      <externalAuxFile/>
-      <outputImageInComplex>false</outputImageInComplex>
-      <outputImageScaleInDb>false</outputImageScaleInDb>
-      <createGammaBand>false</createGammaBand>
-      <createBetaBand>false</createBetaBand>
-      <selectedPolarisations>VH,VV</selectedPolarisations>
-      <outputSigmaBand>false</outputSigmaBand>
-      <outputGammaBand>false</outputGammaBand>
-      <outputBetaBand>true</outputBetaBand>
-    </parameters>
-  </node>
-  <node id="Terrain-Correction">
-    <operator>Terrain-Correction</operator>
-    <sources>
-      <sourceProduct refid="Calibration"/>
-    </sources>
-    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
-      <sourceBands>Beta0_VH,Beta0_VV</sourceBands>
       <demName>${dem}</demName>
       <externalDEMFile/>
       <externalDEMNoDataValue>0.0</externalDEMNoDataValue>

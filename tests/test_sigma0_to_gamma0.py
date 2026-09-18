@@ -123,19 +123,29 @@ def test_existing_bands_are_not_silently_redone(tmp_path: Path):
     assert any(dropped is None for _, _, dropped in written)
 
 
-def test_missing_incidence_angle_is_a_clear_error(tmp_path: Path):
-    product = build_product(tmp_path)
-    (tmp_path / "scene.data" / "projectedLocalIncidenceAngle.img").unlink()
-    with pytest.raises(converter.ConversionError, match="projectedLocalIncidenceAngle"):
-        converter.convert_product(product)
-
-
-def test_missing_sigma0_is_a_clear_error(tmp_path: Path):
+def test_a_product_without_sigma0_is_skipped_not_failed(tmp_path: Path):
+    """Other variants' outputs sit in sibling folders under the same search root
+    and carry the same filename. They are not candidates, not failures."""
     product = build_product(tmp_path)
     for pol in ("VH", "VV"):
         (tmp_path / "scene.data" / f"Sigma0_{pol}.img").unlink()
-    with pytest.raises(converter.ConversionError, match="no sigma0 bands"):
+    assert converter.convert_product(product) is None
+
+
+def test_sigma0_without_an_angle_band_is_still_an_error(tmp_path: Path):
+    product = build_product(tmp_path)
+    (tmp_path / "scene.data" / "projectedLocalIncidenceAngle.img").unlink()
+    with pytest.raises(converter.ConversionError, match="no projectedLocalIncidenceAngle"):
         converter.convert_product(product)
+
+
+def test_messages_name_the_variant_folder(tmp_path: Path):
+    """Every variant holds a product of the same name, so the bare filename is
+    ambiguous."""
+    product = tmp_path / "grd_gamma0_tcnorm" / "scene.dim"
+    product.parent.mkdir()
+    build = build_product(product.parent)
+    assert converter.label(build) == "grd_gamma0_tcnorm/scene.dim"
 
 
 def test_converted_product_can_then_be_paired(tmp_path: Path):

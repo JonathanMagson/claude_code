@@ -153,7 +153,10 @@ def test_terrain_correction_bands_are_produced_upstream(path: Path):
     correction = known.get("Terrain-Correction")
     if correction is None:
         return
-    requested = set(parameter(correction, "sourceBands").split(","))
+    selected = parameter(correction, "sourceBands")
+    if not selected:
+        return  # empty means every band, which is always satisfiable
+    requested = set(selected.split(","))
     if "Terrain-Flattening" in known:
         available = {"Gamma0_VH", "Gamma0_VV"}
     else:
@@ -375,17 +378,18 @@ def test_terrain_normalisation_is_never_applied_twice(path: Path):
     assert not (normalising and "Terrain-Flattening" in known)
 
 
-def test_tcnorm_variant_normalises_from_beta0_and_outputs_gamma0():
+def test_tcnorm_variant_does_not_calibrate_twice():
+    """Terrain-Correction's radiometric normalisation calibrates internally.
+    Calibrating first applies the LUT twice, which measured 53 dB dark."""
     path = Path(__file__).resolve().parent.parent / "graphs" / "grd_gamma0_tcnorm.xml"
     known = nodes(ET.parse(path).getroot())
     assert "Terrain-Flattening" not in known, "the point is a single pass"
-    calibration, correction = known["Calibration"], known["Terrain-Correction"]
-    assert parameter(calibration, "outputBetaBand") == "true"
-    assert parameter(correction, "sourceBands") == "Beta0_VH,Beta0_VV"
+    assert "Calibration" not in known, "normalisation calibrates; doing both is twice"
+    correction = known["Terrain-Correction"]
+    assert correction.find("sources/sourceProduct").get("refid") == "Remove-GRD-Border-Noise"
     assert parameter(correction, "applyRadiometricNormalization") == "true"
-    assert parameter(correction, "saveGammaNought") == "true"
-    # Without this the raw beta0 is written alongside, which is just confusing.
-    assert parameter(correction, "saveSelectedSourceBand") == "false"
+    # The conversion to gamma0 needs this band; SNAP writes sigma0 regardless.
+    assert parameter(correction, "saveProjectedLocalIncidenceAngle") == "true"
 
 
 def test_a_no_flattening_variant_exists_for_diagnosis():

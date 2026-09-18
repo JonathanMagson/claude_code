@@ -99,20 +99,35 @@ def convert(
     return gamma0, dropped
 
 
+def label(product: Path) -> str:
+    """Product name qualified by its variant folder.
+
+    Every variant holds a product of the same name, so the bare filename is
+    ambiguous the moment more than one has been processed.
+    """
+    return f"{product.parent.name}/{product.name}"
+
+
 def convert_product(product: Path, max_angle: float = DEFAULT_MAX_ANGLE,
-                    overwrite: bool = False) -> list:
+                    overwrite: bool = False) -> Optional[list]:
+    """Write gamma0 bands for *product*, or None if it is not a candidate.
+
+    A product with no sigma0 bands is simply a different kind of output -- one
+    of the other variants -- not a failure.
+    """
     data = product.with_suffix(".data")
     if not data.is_dir():
-        raise ConversionError(f"{product.name} has no .data folder")
+        raise ConversionError(f"{label(product)} has no .data folder")
+    bands = sigma0_bands(data)
+    if not bands:
+        return None
     angle = band_path(data, ANGLE_BAND)
     if angle is None:
         raise ConversionError(
-            f"{product.name} has no projectedLocalIncidenceAngle band. Terrain "
-            "correction must be run with saveProjectedLocalIncidenceAngle enabled."
+            f"{label(product)} has sigma0 bands but no projectedLocalIncidenceAngle. "
+            "Terrain correction must be run with saveProjectedLocalIncidenceAngle "
+            "enabled."
         )
-    bands = sigma0_bands(data)
-    if not bands:
-        raise ConversionError(f"{product.name} has no sigma0 bands")
 
     angle_degrees, _ = read(angle)
     mask_file = band_path(data, MASK_BAND)
@@ -154,6 +169,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 1
 
     failures = 0
+    converted = 0
     for product in products:
         try:
             written = convert_product(product, args.max_angle, args.overwrite)
@@ -161,13 +177,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print(f"error: {exc}", file=sys.stderr)
             failures += 1
             continue
-        print(product.name)
+        if written is None:
+            continue  # not a sigma0 product; another variant's output
+        converted += 1
+        print(label(product))
         for pol, target, dropped in written:
             if dropped is None:
                 print(f"  {target.name}  (already present, skipped)")
             else:
                 print(f"  {target.name}  dropped {dropped:.1%} to layover/shadow "
                       f"and angles > {args.max_angle:.0f} deg")
+    if not converted and not failures:
+        print(f"no sigma0 products under {root}; nothing to convert", file=sys.stderr)
+        return 1
     return 1 if failures else 0
 
 

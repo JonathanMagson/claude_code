@@ -109,8 +109,16 @@ Flattening on these GRD products displaces regardless of parameters. Do not use
 this variant; it is kept only as the record of that test.
 
 **`grd_gamma0_tcnorm`** drops Terrain-Flattening and normalises inside
-Range-Doppler Terrain Correction instead, in a single pass. **It needs a second
-step:** SNAP writes `Sigma0_*` bands rather than `Gamma0_*` regardless of
+Range-Doppler Terrain Correction instead, in a single pass. On the Blue
+Mountains it lifted correlation against the GA NRB from 0.48 to 0.65 with
+sub-half-pixel registration, so the terrain normalisation works.
+
+There is deliberately **no Calibration node**: the normalisation calibrates
+internally from the aux file, and calibrating beforehand applies the LUT twice.
+The first attempt did exactly that and came out 53 dB dark, which is
+`10*log10(1/A^2)` for a Sentinel-1 calibration constant of a few hundred.
+
+**It needs a second step:** SNAP writes `Sigma0_*` bands rather than `Gamma0_*` regardless of
 `saveGammaNought`, along with `projectedLocalIncidenceAngle`. Run
 
 ```

@@ -294,9 +294,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
           f"(range {min(biases):+.2f} to {max(biases):+.2f}); "
           f"median gain {np.median(gains):+.2f} dB "
           f"(range {min(gains):+.2f} to {max(gains):+.2f}).")
-    if abs(np.median(biases) - np.median(gains)) > 0.15:
-        print("bias and gain disagree: much of the dB offset is a difference in")
-        print("effective looks, not in calibration. Quote gain.")
+    discrepancy = abs(np.median(biases) - np.median(gains))
+    # Only meaningful when it is an appreciable share of the offset itself: a
+    # 0.2 dB gap matters against a 0.3 dB offset and is noise against a 50 dB one.
+    if discrepancy > 0.15 and discrepancy > 0.2 * abs(np.median(gains)):
+        print(f"bias and gain differ by {discrepancy:.2f} dB, a large share of the")
+        print("offset: much of it is a difference in effective looks rather than in")
+        print("calibration. Quote gain.")
+    if abs(np.median(gains)) > 6.0:
+        print(f"\nA {abs(np.median(gains)):.0f} dB offset is far too large to be a "
+              "calibration difference.")
+        print("Suspect a processing fault: applying the calibration LUT twice costs")
+        print("about 54 dB, which is 10*log10(1/A^2) for a Sentinel-1 constant A of")
+        print("a few hundred.")
 
     by_aoi = {}
     for r in results:
