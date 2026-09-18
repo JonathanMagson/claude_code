@@ -109,7 +109,21 @@ Flattening on these GRD products displaces regardless of parameters. Do not use
 this variant; it is kept only as the record of that test.
 
 **`grd_gamma0_tcnorm`** drops Terrain-Flattening and normalises inside
-Range-Doppler Terrain Correction instead, in a single pass. This is weaker
+Range-Doppler Terrain Correction instead, in a single pass. **It needs a second
+step:** SNAP writes `Sigma0_*` bands rather than `Gamma0_*` regardless of
+`saveGammaNought`, along with `projectedLocalIncidenceAngle`. Run
+
+```
+python tools/sigma0_to_gamma0.py <the grd_gamma0_tcnorm folder>
+```
+
+to finish the conversion -- `gamma0 = sigma0 / cos(local incidence angle)` --
+which writes `Gamma0_<pol>.img` into each product where `compare_to_nrb.py`
+finds it. Pixels flagged as layover or shadow, and local incidence angles above
+80 degrees, are dropped rather than amplified: the quotient explodes as the
+cosine approaches zero, which is the same instability GA caps with
+`rtc_min_value_db: -30`. The `.dim` header is not updated, so SNAP itself will
+not list the added bands. This is weaker
 radiometrically -- a local-incidence-angle correction rather than true area
 integration, so a looser approximation of GA's `area_projection` RTC -- but it
 structurally cannot suffer the failure that broke `grd_gamma0_rtc`, because
