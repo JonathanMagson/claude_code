@@ -22,6 +22,8 @@ before_after/pilliga/t009_019142_iw1/20240603/
 | `grd_gamma0_rtc_reflee` | beta0 | Refined Lee | yes | yes | gamma0 RTC |
 | `grd_gamma0_rtc_leesigma` | beta0 | Lee Sigma 7x7 | yes | yes | gamma0 RTC |
 | `grd_gamma0_ellipsoid` | gamma0 | none | **no** | yes | gamma0, ellipsoid |
+| `grd_gamma0_ellipsoid_reflee` | gamma0 | Refined Lee | **no** | yes | gamma0, ellipsoid |
+| `grd_gamma0_ellipsoid_leesigma` | gamma0 | Lee Sigma 7x7 | **no** | yes | gamma0, ellipsoid |
 | `grd_sigma0_ellipsoid` | sigma0 | none | **no** | yes | sigma0, ellipsoid |
 | `grd_tf_diagnostic` | beta0 | none | yes | **no** | flattened + simulated image |
 
@@ -39,8 +41,15 @@ Hunter and the Blue Mountains), **Copernicus 30m Global DEM**, output grid
 aligned to standard grid.
 
 Speckle filtering, where present, runs in **radar geometry** (after calibration,
-before terrain flattening). That is where speckle statistics hold; after
+before flattening or geocoding). That is where speckle statistics hold; after
 geocoding, resampling has already correlated neighbouring pixels.
+
+**Match filtered to filtered.** The GA NRB is delivered unfiltered, so compare it
+against an unfiltered variant (`grd_gamma0_ellipsoid`). To compare filtered
+products, use the `_sf_db` rasters that `postprocess_nrb.py` writes from the NRB
+against one of the `_reflee` / `_leesigma` variants. Comparing a filtered GRD
+against a raw NRB attributes your filter's smoothing to a processing
+difference.
 
 ## Linear, not dB
 

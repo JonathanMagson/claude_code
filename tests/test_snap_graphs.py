@@ -359,3 +359,15 @@ def test_locate_gpt_reports_where_it_looked(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(runner.shutil, "which", lambda _: None)
     with pytest.raises(runner.ConfigError, match="Looked in"):
         runner.locate_gpt()
+
+
+def test_a_filtered_variant_exists_without_terrain_flattening():
+    """Both original filtered variants sat behind terrain flattening, which
+    displaces GRD geolocation, leaving no usable filtered option."""
+    directory = Path(__file__).resolve().parent.parent / "graphs"
+    unflattened_filtered = [
+        path for path in directory.glob("*.xml")
+        if "Speckle-Filter" in nodes(ET.parse(path).getroot())
+        and "Terrain-Flattening" not in nodes(ET.parse(path).getroot())
+    ]
+    assert unflattened_filtered, "no speckle-filtered graph avoids terrain flattening"
