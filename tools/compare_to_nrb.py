@@ -49,13 +49,34 @@ from measure_shift import (  # noqa: E402
     common_patch,
     phase_correlate,
     prepare,
-    resolve_band,
     to_db,
 )
 
 OUTPUT_DIRNAME = "grd_preprocessed"
 # ga_s1a_nrb_0-1-0_T009-019142-IW1_20240603T084048Z_VH-gamma0.tif
 GA_RASTER = re.compile(r"_(?P<pol>VH|VV)-gamma0(?P<suffix>|_sf_db)\.tif$", re.IGNORECASE)
+
+
+def find_band(produced: Path, pol: str) -> Path:
+    """The gamma0 band for *pol* inside a BEAM-DIMAP product.
+
+    Matched loosely rather than on an exact name: SNAP does not always call the
+    band Gamma0_VH. Terrain-Correction's own radiometric normalisation, for one,
+    suffixes the band with how the incidence angle was derived.
+    """
+    data = produced.with_suffix(".data")
+    if not data.is_dir():
+        raise MeasureError(f"{produced.name} has no .data folder -- the run did not finish")
+    images = sorted(data.glob("*.img"))
+    wanted = pol.lower()
+    for image in images:
+        name = image.stem.lower()
+        if name.startswith("gamma0") and wanted in name:
+            return image
+    raise MeasureError(
+        f"no gamma0 {pol} band in {data.name}. Bands present: "
+        + (", ".join(i.stem for i in images) or "none")
+    )
 
 
 class Pair(NamedTuple):
@@ -81,11 +102,16 @@ class Result(NamedTuple):
     reprojected: bool
 
 
-def find_pairs(root: Path, variant: str, filtered: bool = False) -> Iterator[Pair]:
+def find_pairs(root: Path, variant: str, filtered: bool = False,
+               report=None) -> Iterator[Pair]:
     """Pair every GA NRB raster with the SNAP band for the same scene and pol.
 
     The SNAP output lives in ``grd_preprocessed/<variant>/`` beside the GA
     rasters, so a pair is always within one date folder.
+
+    *report* is called with an explanation for each product that cannot be
+    paired. Silently dropping them is how a successful run gets mistaken for
+    one that never happened.
     """
     wanted_suffix = "_sf_db" if filtered else ""
     for produced in sorted(root.rglob(f"{OUTPUT_DIRNAME}/{variant}/*.dim")):
@@ -96,8 +122,10 @@ def find_pairs(root: Path, variant: str, filtered: bool = False) -> Iterator[Pai
                 continue
             pol = match.group("pol").upper()
             try:
-                target = resolve_band(produced, f"Gamma0_{pol}")
-            except MeasureError:
+                target = find_band(produced, pol)
+            except MeasureError as exc:
+                if report is not None:
+                    report(str(exc))
                 continue
             yield Pair(
                 aoi=date_dir.parent.parent.name,
@@ -212,15 +240,32 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(f"error: {root} is not a directory", file=sys.stderr)
         return 2
 
-    pairs = list(find_pairs(root, args.variant, args.filtered))
+    skipped: list[str] = []
+    seen = set()
+
+    def note(message: str) -> None:
+        if message not in seen:
+            seen.add(message)
+            skipped.append(message)
+
+    pairs = list(find_pairs(root, args.variant, args.filtered, report=note))
     if not pairs:
-        print(
-            f"no pairs found for variant {args.variant!r} under {root}.\n"
-            f"Expected SNAP output in <date>/{OUTPUT_DIRNAME}/{args.variant}/*.dim "
-            f"beside the GA {'_sf_db ' if args.filtered else ''}rasters.",
-            file=sys.stderr,
-        )
+        products = list(root.rglob(f"{OUTPUT_DIRNAME}/{args.variant}/*.dim"))
+        if skipped:
+            print(f"found {len(products)} product(s) for {args.variant!r} but could not "
+                  "pair any:", file=sys.stderr)
+            for message in skipped:
+                print(f"  {message}", file=sys.stderr)
+        else:
+            print(
+                f"no pairs found for variant {args.variant!r} under {root}.\n"
+                f"Expected SNAP output in <date>/{OUTPUT_DIRNAME}/{args.variant}/*.dim "
+                f"beside the GA {'_sf_db ' if args.filtered else ''}rasters.",
+                file=sys.stderr,
+            )
         return 1
+    for message in skipped:
+        print(f"note: {message}", file=sys.stderr)
 
     print(f"{'AOI':10} {'DATE':10} {'POL':4} {'COVER':>6} {'GA dB':>7} {'SNAP dB':>8} "
           f"{'BIAS':>7} {'GAIN':>7} {'RMSE':>6} {'CORR':>6} {'SHIFT px':>9}")

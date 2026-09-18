@@ -239,3 +239,57 @@ def test_valid_fractions_are_quoted_in_the_error(tmp_path: Path):
     write(pair.target, np.full((600, 600), np.nan, dtype="float32"))
     with pytest.raises(MeasureError, match=r"GA is 100\.0% valid and SNAP is 0\.0%"):
         compare_to_nrb.compare(pair)
+
+
+def test_band_is_matched_loosely(tmp_path: Path):
+    """SNAP does not always name the band Gamma0_VH: Terrain-Correction's own
+    radiometric normalisation suffixes it with how the angle was derived."""
+    produced = tmp_path / "scene.data"
+    produced.mkdir()
+    (tmp_path / "scene.dim").touch()
+    (produced / "Gamma0_VH_use_local_inci_angle_from_dem.img").touch()
+    (produced / "Gamma0_VV_use_local_inci_angle_from_dem.img").touch()
+    assert compare_to_nrb.find_band(tmp_path / "scene.dim", "VH").stem.startswith("Gamma0_VH")
+    assert compare_to_nrb.find_band(tmp_path / "scene.dim", "VV").stem.startswith("Gamma0_VV")
+
+
+def test_band_match_never_crosses_polarisation(tmp_path: Path):
+    produced = tmp_path / "scene.data"
+    produced.mkdir()
+    (tmp_path / "scene.dim").touch()
+    (produced / "Gamma0_VV_normalised.img").touch()
+    (produced / "Gamma0_VH_normalised.img").touch()
+    assert "VH" in compare_to_nrb.find_band(tmp_path / "scene.dim", "VH").stem
+    assert "VV" in compare_to_nrb.find_band(tmp_path / "scene.dim", "VV").stem
+
+
+def test_band_match_ignores_non_gamma0_bands(tmp_path: Path):
+    produced = tmp_path / "scene.data"
+    produced.mkdir()
+    (tmp_path / "scene.dim").touch()
+    (produced / "Sigma0_VH.img").touch()
+    (produced / "Beta0_VH.img").touch()
+    with pytest.raises(MeasureError, match="no gamma0 VH band"):
+        compare_to_nrb.find_band(tmp_path / "scene.dim", "VH")
+
+
+def test_missing_band_lists_what_is_there(tmp_path: Path):
+    """Silently dropping a product is how a successful run gets mistaken for one
+    that never happened."""
+    produced = tmp_path / "scene.data"
+    produced.mkdir()
+    (tmp_path / "scene.dim").touch()
+    (produced / "Sigma0_VH.img").touch()
+    with pytest.raises(MeasureError, match="Bands present: Sigma0_VH"):
+        compare_to_nrb.find_band(tmp_path / "scene.dim", "VH")
+
+
+def test_unpairable_products_are_reported_not_swallowed(tmp_path: Path):
+    root = build_tree(tmp_path)
+    produced = next(root.rglob("grd_preprocessed/grd_gamma0_ellipsoid/*.data"))
+    for image in produced.glob("*.img"):
+        image.rename(image.with_name(image.name.replace("Gamma0", "Sigma0")))
+    messages = []
+    pairs = list(compare_to_nrb.find_pairs(root, "grd_gamma0_ellipsoid", report=messages.append))
+    assert not pairs
+    assert messages and "Bands present" in messages[0]

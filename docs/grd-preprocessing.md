@@ -98,8 +98,15 @@ After `grd_gamma0_rtc` failed (below), two variants test different explanations.
 **`grd_gamma0_rtc_defaults`** keeps Terrain-Flattening but reverts every setting
 that `grd_gamma0_rtc` had tuned away from SNAP's defaults -- `oversamplingMultiple`
 2.0 back to 1.0, `additionalOverlap` 0.2 back to 0.1, `nodataValueAtSea` false
-back to true. None of those three was verified in isolation, and the default path
-is the one SNAP has been exercised on. If this works, the tuning was the problem.
+back to true.
+
+**Result: worse, and conclusive.** On the Blue Mountains it produced a raster
+only 5.6% valid, sharing *zero* pixels with the GA burst's 30.5%. Two faults at
+once: `nodataValueAtSea: true` masks about 94% of the product against a
+Copernicus DEM, and what survived is still displaced. Since the displacement
+persists at SNAP's own defaults, the tuning was never the cause -- Terrain
+Flattening on these GRD products displaces regardless of parameters. Do not use
+this variant; it is kept only as the record of that test.
 
 **`grd_gamma0_tcnorm`** drops Terrain-Flattening and normalises inside
 Range-Doppler Terrain Correction instead, in a single pass. This is weaker
