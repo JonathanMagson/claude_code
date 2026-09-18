@@ -25,6 +25,8 @@ before_after/pilliga/t009_019142_iw1/20240603/
 | `grd_gamma0_ellipsoid_reflee` | gamma0 | Refined Lee | **no** | yes | gamma0, ellipsoid |
 | `grd_gamma0_ellipsoid_leesigma` | gamma0 | Lee Sigma 7x7 | **no** | yes | gamma0, ellipsoid |
 | `grd_sigma0_ellipsoid` | sigma0 | none | **no** | yes | sigma0, ellipsoid |
+| `grd_gamma0_rtc_defaults` | beta0 | none | yes, SNAP defaults | yes | gamma0 RTC |
+| `grd_gamma0_tcnorm` | beta0 | none | in terrain correction | yes | gamma0, normalised |
 | `grd_tf_diagnostic` | beta0 | none | yes | **no** | flattened + simulated image |
 
 **Use `grd_gamma0_ellipsoid` for now.** `grd_gamma0_rtc` is in principle the
@@ -88,6 +90,27 @@ anything; `--overwrite` re-runs finished jobs; `--crs` overrides the projection
 that is otherwise inferred from the AOI folder name; `--list-variants` shows
 what is available. Finished jobs are skipped automatically, and a `.dim` with no
 matching `.data/` counts as unfinished rather than done.
+
+## Two further attempts at terrain flattening
+
+After `grd_gamma0_rtc` failed (below), two variants test different explanations.
+
+**`grd_gamma0_rtc_defaults`** keeps Terrain-Flattening but reverts every setting
+that `grd_gamma0_rtc` had tuned away from SNAP's defaults -- `oversamplingMultiple`
+2.0 back to 1.0, `additionalOverlap` 0.2 back to 0.1, `nodataValueAtSea` false
+back to true. None of those three was verified in isolation, and the default path
+is the one SNAP has been exercised on. If this works, the tuning was the problem.
+
+**`grd_gamma0_tcnorm`** drops Terrain-Flattening and normalises inside
+Range-Doppler Terrain Correction instead, in a single pass. This is weaker
+radiometrically -- a local-incidence-angle correction rather than true area
+integration, so a looser approximation of GA's `area_projection` RTC -- but it
+structurally cannot suffer the failure that broke `grd_gamma0_rtc`, because
+there is no intermediate product to resample and re-geocode. If this works and
+the other does not, the fault is in Terrain-Flattening on GRD itself.
+
+Never enable Terrain-Correction's `applyRadiometricNormalization` while
+Terrain-Flattening is also running: that normalises slopes twice. A test pins it.
 
 ## Terrain flattening shifts GRD geolocation
 

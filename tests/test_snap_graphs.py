@@ -35,6 +35,9 @@ FULL_EXTENT = "0,0,2147483647,2147483647"
 UNIVERSAL_PARAMS = {"input", "output"}
 GEOCODING_PARAMS = {"crs", "spacing"}
 FLATTENING_PARAMS = {"oversampling", "overlap"}
+# Graphs that deliberately hold SNAP's own defaults, to test whether the tuned
+# values were what broke terrain flattening. They are not meant to be tunable.
+DEFAULTS_VARIANTS = {"grd_gamma0_rtc_defaults"}
 
 
 def nodes(graph: ET.Element) -> dict[str, ET.Element]:
@@ -93,7 +96,10 @@ def test_placeholders_match_the_operators_present(path: Path):
     declared = runner.placeholders(path)
     known = nodes(ET.parse(path).getroot())
     assert (GEOCODING_PARAMS <= declared) is ("Terrain-Correction" in known)
-    assert (FLATTENING_PARAMS <= declared) is ("Terrain-Flattening" in known)
+    if path.stem not in DEFAULTS_VARIANTS:
+        assert (FLATTENING_PARAMS <= declared) is ("Terrain-Flattening" in known)
+    else:
+        assert not (FLATTENING_PARAMS & declared), "a defaults variant must not be tunable"
     assert ("dem" in declared) is bool({"Terrain-Correction", "Terrain-Flattening"} & known.keys())
 
 
@@ -325,7 +331,7 @@ def test_terrain_flattening_never_receives_gamma0_or_sigma0(path: Path):
 def test_oversampling_is_tunable_not_hardcoded(path: Path):
     graph = ET.parse(path).getroot()
     flattening = nodes(graph).get("Terrain-Flattening")
-    if flattening is None:
+    if flattening is None or path.stem in DEFAULTS_VARIANTS:
         return
     assert parameter(flattening, "oversamplingMultiple") == "${oversampling}"
 
@@ -338,11 +344,48 @@ def test_border_limit_is_the_default_not_5000(path: Path):
 
 @pytest.mark.parametrize("path", GRAPHS, ids=lambda p: p.stem)
 def test_inland_dems_reading_zero_are_not_masked_as_sea(path: Path):
+    if path.stem in DEFAULTS_VARIANTS:
+        return
     graph = ET.parse(path).getroot()
     for node_id in ("Terrain-Flattening", "Terrain-Correction"):
         node = nodes(graph).get(node_id)
         if node is not None:
             assert parameter(node, "nodataValueAtSea") == "false"
+
+
+def test_defaults_variant_really_holds_snap_defaults():
+    """Its whole purpose is to differ from grd_gamma0_rtc only by reverting the
+    three tuned settings, so it must not drift."""
+    path = Path(__file__).resolve().parent.parent / "graphs" / "grd_gamma0_rtc_defaults.xml"
+    flattening = nodes(ET.parse(path).getroot())["Terrain-Flattening"]
+    assert parameter(flattening, "oversamplingMultiple") == "1.0"
+    assert parameter(flattening, "additionalOverlap") == "0.1"
+    assert parameter(flattening, "nodataValueAtSea") == "true"
+
+
+@pytest.mark.parametrize("path", GRAPHS, ids=lambda p: p.stem)
+def test_terrain_normalisation_is_never_applied_twice(path: Path):
+    """Terrain-Correction has its own radiometric normalisation. Running it as
+    well as Terrain-Flattening normalises slopes twice and overcorrects them."""
+    known = nodes(ET.parse(path).getroot())
+    correction = known.get("Terrain-Correction")
+    if correction is None:
+        return
+    normalising = parameter(correction, "applyRadiometricNormalization") == "true"
+    assert not (normalising and "Terrain-Flattening" in known)
+
+
+def test_tcnorm_variant_normalises_from_beta0_and_outputs_gamma0():
+    path = Path(__file__).resolve().parent.parent / "graphs" / "grd_gamma0_tcnorm.xml"
+    known = nodes(ET.parse(path).getroot())
+    assert "Terrain-Flattening" not in known, "the point is a single pass"
+    calibration, correction = known["Calibration"], known["Terrain-Correction"]
+    assert parameter(calibration, "outputBetaBand") == "true"
+    assert parameter(correction, "sourceBands") == "Beta0_VH,Beta0_VV"
+    assert parameter(correction, "applyRadiometricNormalization") == "true"
+    assert parameter(correction, "saveGammaNought") == "true"
+    # Without this the raw beta0 is written alongside, which is just confusing.
+    assert parameter(correction, "saveSelectedSourceBand") == "false"
 
 
 def test_a_no_flattening_variant_exists_for_diagnosis():
