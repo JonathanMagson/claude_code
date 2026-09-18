@@ -1,13 +1,11 @@
 <graph id="Graph">
   <version>1.0</version>
-  <!-- Control: sigma0, terrain-CORRECTED but not terrain-FLATTENED. Shows what RTC buys you.
+  <!-- Control: sigma0, terrain-corrected but not terrain-flattened.
 
-       Templated for batch use with gpt:
-         gpt grd_sigma0_ellipsoid.xml -c 8G -q 8 \
-             -Pinput="<scene.zip>" -Poutput="<target.dim>" \
-             -Pcrs="EPSG:32755" -Pspacing="20.0" -Pdem="Copernicus 30m Global DEM"
+       Templated for gpt. Supply every ${...} placeholder this graph uses;
+       gpt does not default them. tools/run_snap_grd.py reads the placeholders
+       out of the XML and supplies exactly those.
 
-       Every ${...} placeholder MUST be supplied; gpt does not default them.
        Output is LINEAR power (no LinearToFromdB) so it can be differenced
        against the GA NRB before any dB conversion. -->
   <node id="Read">
@@ -30,6 +28,10 @@
     <parameters class="com.bc.ceres.binding.dom.XppDomElement">
       <orbitType>Sentinel Precise (Auto Download)</orbitType>
       <polyDegree>3</polyDegree>
+      <!-- Deliberately NOT "continue on fail". A silent fallback to the
+           predicted orbit misaligns the terrain-flattening simulated image
+           against the real one, which looks like a geometry fault in the
+           final product while every individual step appears to succeed. -->
       <continueOnFail>false</continueOnFail>
     </parameters>
   </node>
@@ -52,6 +54,8 @@
     </sources>
     <parameters class="com.bc.ceres.binding.dom.XppDomElement">
       <selectedPolarisations>VH,VV</selectedPolarisations>
+      <!-- 500 (the default), not 5000. For IPF >= 2.90 border noise is
+           already removed by thermal noise removal, so this is near a no-op. -->
       <borderLimit>500</borderLimit>
       <trimThreshold>0.5</trimThreshold>
     </parameters>

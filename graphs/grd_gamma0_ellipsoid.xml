@@ -1,6 +1,6 @@
 <graph id="Graph">
   <version>1.0</version>
-  <!-- gamma0 RTC, Lee Sigma 7x7 applied in radar geometry.
+  <!-- Terrain flattening REMOVED: gamma0 from the ellipsoid incidence angle, geocoded but not radiometrically flattened. Use this to isolate whether a fault is in terrain flattening or upstream of it. Not a substitute for the RTC product when comparing against GA - on slopes it differs by several dB, and the difference tracks the terrain.
 
        Templated for gpt. Supply every ${...} placeholder this graph uses;
        gpt does not default them. tools/run_snap_grd.py reads the placeholders
@@ -75,60 +75,14 @@
       <createBetaBand>false</createBetaBand>
       <selectedPolarisations>VH,VV</selectedPolarisations>
       <outputSigmaBand>false</outputSigmaBand>
-      <outputGammaBand>false</outputGammaBand>
-      <outputBetaBand>true</outputBetaBand>
-    </parameters>
-  </node>
-  <node id="Speckle-Filter">
-    <operator>Speckle-Filter</operator>
-    <sources>
-      <sourceProduct refid="Calibration"/>
-    </sources>
-    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
-      <sourceBands>Beta0_VH,Beta0_VV</sourceBands>
-      <filter>Lee Sigma</filter>
-      <filterSizeX>3</filterSizeX>
-      <filterSizeY>3</filterSizeY>
-      <dampingFactor>2</dampingFactor>
-      <estimateENL>true</estimateENL>
-      <enl>1.0</enl>
-      <numLooksStr>1</numLooksStr>
-      <windowSize>7x7</windowSize>
-      <targetWindowSizeStr>3x3</targetWindowSizeStr>
-      <sigmaStr>0.9</sigmaStr>
-      <anSize>50</anSize>
-    </parameters>
-  </node>
-  <node id="Terrain-Flattening">
-    <operator>Terrain-Flattening</operator>
-    <sources>
-      <sourceProduct refid="Speckle-Filter"/>
-    </sources>
-    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
-      <!-- beta0 ONLY. Terrain-Flattening derives gamma0 from beta0 by
-           dividing out the DEM-derived illuminated area; feeding it gamma0
-           or sigma0 is meaningless and SNAP will reject or mangle it. -->
-      <sourceBands>Beta0_VH,Beta0_VV</sourceBands>
-      <demName>${dem}</demName>
-      <demResamplingMethod>BILINEAR_INTERPOLATION</demResamplingMethod>
-      <externalDEMFile/>
-      <externalDEMNoDataValue>0.0</externalDEMNoDataValue>
-      <externalDEMApplyEGM>false</externalDEMApplyEGM>
-      <outputSimulatedImage>false</outputSimulatedImage>
-      <outputSigma0>false</outputSigma0>
-      <!-- false: inland, a DEM reading 0 is a dam or a river flat, not sea. -->
-      <nodataValueAtSea>false</nodataValueAtSea>
-      <additionalOverlap>${overlap}</additionalOverlap>
-      <!-- Raise in steep terrain. At 1.0 the simulated image is undersampled
-           relative to the SAR grid and the flattened result shows holes,
-           stripes and blocky artefacts over high relief. -->
-      <oversamplingMultiple>${oversampling}</oversamplingMultiple>
+      <outputGammaBand>true</outputGammaBand>
+      <outputBetaBand>false</outputBetaBand>
     </parameters>
   </node>
   <node id="Terrain-Correction">
     <operator>Terrain-Correction</operator>
     <sources>
-      <sourceProduct refid="Terrain-Flattening"/>
+      <sourceProduct refid="Calibration"/>
     </sources>
     <parameters class="com.bc.ceres.binding.dom.XppDomElement">
       <sourceBands>Gamma0_VH,Gamma0_VV</sourceBands>

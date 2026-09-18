@@ -2,12 +2,10 @@
   <version>1.0</version>
   <!-- Baseline: gamma0 RTC, no speckle filter. Closest match to the GA NRB.
 
-       Templated for batch use with gpt:
-         gpt grd_gamma0_rtc.xml -c 8G -q 8 \
-             -Pinput="<scene.zip>" -Poutput="<target.dim>" \
-             -Pcrs="EPSG:32755" -Pspacing="20.0" -Pdem="Copernicus 30m Global DEM"
+       Templated for gpt. Supply every ${...} placeholder this graph uses;
+       gpt does not default them. tools/run_snap_grd.py reads the placeholders
+       out of the XML and supplies exactly those.
 
-       Every ${...} placeholder MUST be supplied; gpt does not default them.
        Output is LINEAR power (no LinearToFromdB) so it can be differenced
        against the GA NRB before any dB conversion. -->
   <node id="Read">
@@ -30,6 +28,10 @@
     <parameters class="com.bc.ceres.binding.dom.XppDomElement">
       <orbitType>Sentinel Precise (Auto Download)</orbitType>
       <polyDegree>3</polyDegree>
+      <!-- Deliberately NOT "continue on fail". A silent fallback to the
+           predicted orbit misaligns the terrain-flattening simulated image
+           against the real one, which looks like a geometry fault in the
+           final product while every individual step appears to succeed. -->
       <continueOnFail>false</continueOnFail>
     </parameters>
   </node>
@@ -52,6 +54,8 @@
     </sources>
     <parameters class="com.bc.ceres.binding.dom.XppDomElement">
       <selectedPolarisations>VH,VV</selectedPolarisations>
+      <!-- 500 (the default), not 5000. For IPF >= 2.90 border noise is
+           already removed by thermal noise removal, so this is near a no-op. -->
       <borderLimit>500</borderLimit>
       <trimThreshold>0.5</trimThreshold>
     </parameters>
@@ -81,6 +85,9 @@
       <sourceProduct refid="Calibration"/>
     </sources>
     <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <!-- beta0 ONLY. Terrain-Flattening derives gamma0 from beta0 by
+           dividing out the DEM-derived illuminated area; feeding it gamma0
+           or sigma0 is meaningless and SNAP will reject or mangle it. -->
       <sourceBands>Beta0_VH,Beta0_VV</sourceBands>
       <demName>${dem}</demName>
       <demResamplingMethod>BILINEAR_INTERPOLATION</demResamplingMethod>
@@ -89,9 +96,13 @@
       <externalDEMApplyEGM>false</externalDEMApplyEGM>
       <outputSimulatedImage>false</outputSimulatedImage>
       <outputSigma0>false</outputSigma0>
+      <!-- false: inland, a DEM reading 0 is a dam or a river flat, not sea. -->
       <nodataValueAtSea>false</nodataValueAtSea>
-      <additionalOverlap>0.1</additionalOverlap>
-      <oversamplingMultiple>1.0</oversamplingMultiple>
+      <additionalOverlap>${overlap}</additionalOverlap>
+      <!-- Raise in steep terrain. At 1.0 the simulated image is undersampled
+           relative to the SAR grid and the flattened result shows holes,
+           stripes and blocky artefacts over high relief. -->
+      <oversamplingMultiple>${oversampling}</oversamplingMultiple>
     </parameters>
   </node>
   <node id="Terrain-Correction">

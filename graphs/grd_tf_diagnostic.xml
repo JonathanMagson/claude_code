@@ -1,6 +1,6 @@
 <graph id="Graph">
   <version>1.0</version>
-  <!-- gamma0 RTC, Lee Sigma 7x7 applied in radar geometry.
+  <!-- DIAGNOSTIC, not a product. Stops after terrain flattening and writes the simulated image alongside the flattened bands, in radar geometry. If the simulated image does not line up with the real one, terrain flattening is dividing by a misregistered area - look at the orbit and the DEM, not at the flattening parameters. Expect this output to LOOK skewed: it has not been geocoded.
 
        Templated for gpt. Supply every ${...} placeholder this graph uses;
        gpt does not default them. tools/run_snap_grd.py reads the placeholders
@@ -79,30 +79,10 @@
       <outputBetaBand>true</outputBetaBand>
     </parameters>
   </node>
-  <node id="Speckle-Filter">
-    <operator>Speckle-Filter</operator>
-    <sources>
-      <sourceProduct refid="Calibration"/>
-    </sources>
-    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
-      <sourceBands>Beta0_VH,Beta0_VV</sourceBands>
-      <filter>Lee Sigma</filter>
-      <filterSizeX>3</filterSizeX>
-      <filterSizeY>3</filterSizeY>
-      <dampingFactor>2</dampingFactor>
-      <estimateENL>true</estimateENL>
-      <enl>1.0</enl>
-      <numLooksStr>1</numLooksStr>
-      <windowSize>7x7</windowSize>
-      <targetWindowSizeStr>3x3</targetWindowSizeStr>
-      <sigmaStr>0.9</sigmaStr>
-      <anSize>50</anSize>
-    </parameters>
-  </node>
   <node id="Terrain-Flattening">
     <operator>Terrain-Flattening</operator>
     <sources>
-      <sourceProduct refid="Speckle-Filter"/>
+      <sourceProduct refid="Calibration"/>
     </sources>
     <parameters class="com.bc.ceres.binding.dom.XppDomElement">
       <!-- beta0 ONLY. Terrain-Flattening derives gamma0 from beta0 by
@@ -114,7 +94,7 @@
       <externalDEMFile/>
       <externalDEMNoDataValue>0.0</externalDEMNoDataValue>
       <externalDEMApplyEGM>false</externalDEMApplyEGM>
-      <outputSimulatedImage>false</outputSimulatedImage>
+      <outputSimulatedImage>true</outputSimulatedImage>
       <outputSigma0>false</outputSigma0>
       <!-- false: inland, a DEM reading 0 is a dam or a river flat, not sea. -->
       <nodataValueAtSea>false</nodataValueAtSea>
@@ -125,48 +105,10 @@
       <oversamplingMultiple>${oversampling}</oversamplingMultiple>
     </parameters>
   </node>
-  <node id="Terrain-Correction">
-    <operator>Terrain-Correction</operator>
-    <sources>
-      <sourceProduct refid="Terrain-Flattening"/>
-    </sources>
-    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
-      <sourceBands>Gamma0_VH,Gamma0_VV</sourceBands>
-      <demName>${dem}</demName>
-      <externalDEMFile/>
-      <externalDEMNoDataValue>0.0</externalDEMNoDataValue>
-      <externalDEMApplyEGM>true</externalDEMApplyEGM>
-      <demResamplingMethod>BILINEAR_INTERPOLATION</demResamplingMethod>
-      <imgResamplingMethod>BILINEAR_INTERPOLATION</imgResamplingMethod>
-      <pixelSpacingInMeter>${spacing}</pixelSpacingInMeter>
-      <pixelSpacingInDegree>0.0</pixelSpacingInDegree>
-      <mapProjection>${crs}</mapProjection>
-      <alignToStandardGrid>true</alignToStandardGrid>
-      <standardGridOriginX>0.0</standardGridOriginX>
-      <standardGridOriginY>0.0</standardGridOriginY>
-      <nodataValueAtSea>false</nodataValueAtSea>
-      <saveDEM>false</saveDEM>
-      <saveLatLon>false</saveLatLon>
-      <saveIncidenceAngleFromEllipsoid>false</saveIncidenceAngleFromEllipsoid>
-      <saveLocalIncidenceAngle>false</saveLocalIncidenceAngle>
-      <saveProjectedLocalIncidenceAngle>false</saveProjectedLocalIncidenceAngle>
-      <saveSelectedSourceBand>true</saveSelectedSourceBand>
-      <saveLayoverShadowMask>true</saveLayoverShadowMask>
-      <outputComplex>false</outputComplex>
-      <applyRadiometricNormalization>false</applyRadiometricNormalization>
-      <saveSigmaNought>false</saveSigmaNought>
-      <saveGammaNought>false</saveGammaNought>
-      <saveBetaNought>false</saveBetaNought>
-      <incidenceAngleForSigma0>Use projected local incidence angle from DEM</incidenceAngleForSigma0>
-      <incidenceAngleForGamma0>Use projected local incidence angle from DEM</incidenceAngleForGamma0>
-      <auxFile>Latest Auxiliary File</auxFile>
-      <externalAuxFile/>
-    </parameters>
-  </node>
   <node id="Write">
     <operator>Write</operator>
     <sources>
-      <sourceProduct refid="Terrain-Correction"/>
+      <sourceProduct refid="Terrain-Flattening"/>
     </sources>
     <parameters class="com.bc.ceres.binding.dom.XppDomElement">
       <file>${output}</file>

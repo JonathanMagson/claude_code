@@ -34,7 +34,7 @@ Emit cmd.exe one-liners instead of running them::
 from __future__ import annotations
 
 import argparse
-import os
+import re
 import shutil
 import subprocess
 import sys
@@ -45,6 +45,11 @@ from typing import Iterable, Optional, Sequence
 OUTPUT_DIRNAME = "grd_preprocessed"
 DEFAULT_SPACING = "20.0"
 DEFAULT_DEM = "Copernicus 30m Global DEM"
+# Terrain-Flattening simulates the illuminated area from the DEM. At the SNAP
+# default of 1.0 that simulation is undersampled relative to the SAR grid, and
+# high relief comes out holed, striped or blocky. 2.0 costs runtime, not quality.
+DEFAULT_OVERSAMPLING = "2.0"
+DEFAULT_OVERLAP = "0.2"
 
 # The GA NRB products are delivered in UTM. Matching the projection at source
 # avoids a reproject-and-resample step before any comparison.
@@ -67,6 +72,17 @@ def graphs_dir(explicit: Optional[str] = None) -> Path:
     if not path.is_dir():
         raise ConfigError(f"graphs directory not found: {path}")
     return path
+
+
+def placeholders(graph: Path) -> set[str]:
+    """The ${...} names a graph actually uses.
+
+    Graphs differ: the diagnostic stops before terrain correction and so has no
+    crs or spacing, while the ellipsoid variants have no terrain flattening and
+    so no oversampling. Passing a -P a graph does not use is noise at best, so
+    supply exactly what each one asks for.
+    """
+    return set(re.findall(r"\$\{(\w+)\}", graph.read_text(encoding="utf-8")))
 
 
 def available_variants(directory: Path) -> list[str]:
@@ -125,27 +141,21 @@ def is_complete(target: Path) -> bool:
 def build_command(
     gpt: str,
     graph: Path,
-    scene: Path,
-    target: Path,
-    crs: str,
-    spacing: str,
-    dem: str,
     memory: str,
     threads: str,
+    values: dict,
 ) -> list[str]:
-    return [
-        gpt,
-        str(graph),
-        "-c",
-        memory,
-        "-q",
-        threads,
-        f"-Pinput={scene}",
-        f"-Poutput={target}",
-        f"-Pcrs={crs}",
-        f"-Pspacing={spacing}",
-        f"-Pdem={dem}",
-    ]
+    """gpt invocation supplying exactly the placeholders *graph* declares."""
+    needed = placeholders(graph)
+    missing = needed - values.keys()
+    if missing:
+        raise ConfigError(
+            f"{graph.name} needs {', '.join(sorted(missing))}, which the runner "
+            "cannot supply. Add it to the runner or remove it from the graph."
+        )
+    command = [gpt, str(graph), "-c", memory, "-q", threads]
+    command += [f"-P{name}={values[name]}" for name in sorted(needed)]
+    return command
 
 
 def quote_for_cmd(command: Iterable[str]) -> str:
@@ -175,6 +185,11 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--gpt", default="gpt", help="path to the SNAP gpt executable")
     parser.add_argument("--crs", help="override the projection, e.g. EPSG:32755")
     parser.add_argument("--spacing", default=DEFAULT_SPACING, help=f"output pixel spacing in metres (default {DEFAULT_SPACING})")
+    parser.add_argument("--oversampling", default=DEFAULT_OVERSAMPLING,
+                        help=f"Terrain-Flattening DEM oversampling (default {DEFAULT_OVERSAMPLING}; "
+                             "raise for steep terrain, 1.0 is the SNAP default)")
+    parser.add_argument("--overlap", default=DEFAULT_OVERLAP,
+                        help=f"Terrain-Flattening additional overlap (default {DEFAULT_OVERLAP})")
     parser.add_argument("--dem", default=DEFAULT_DEM, help=f"SNAP DEM name (default: {DEFAULT_DEM!r})")
     parser.add_argument("--memory", default="8G", help="gpt tile cache, -c (default 8G)")
     parser.add_argument("--threads", default="8", help="gpt parallelism, -q (default 8)")
@@ -212,10 +227,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         return 2
 
+    # The diagnostic graph stops before terrain correction, so it needs no CRS.
+    # Don't make an unrecognised AOI folder an error for a run that never geocodes.
+    needs_crs = any("crs" in placeholders(directory / f"{name}.xml") for name in variants)
+
     jobs = []
     for scene in scenes:
         try:
-            crs = crs_for(scene, args.crs)
+            crs = crs_for(scene, args.crs) if needs_crs else ""
         except ConfigError as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 2
@@ -232,10 +251,25 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     failures = 0
     for index, (scene, variant, target, crs) in enumerate(jobs, start=1):
-        command = build_command(
-            args.gpt, directory / f"{variant}.xml", scene, target,
-            crs, args.spacing, args.dem, args.memory, args.threads,
-        )
+        try:
+            command = build_command(
+                args.gpt,
+                directory / f"{variant}.xml",
+                args.memory,
+                args.threads,
+                {
+                    "input": scene,
+                    "output": target,
+                    "crs": crs,
+                    "spacing": args.spacing,
+                    "dem": args.dem,
+                    "oversampling": args.oversampling,
+                    "overlap": args.overlap,
+                },
+            )
+        except ConfigError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
         if args.print_commands:
             print(quote_for_cmd(command))
             continue

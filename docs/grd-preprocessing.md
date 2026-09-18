@@ -16,17 +16,21 @@ before_after/pilliga/t009_019142_iw1/20240603/
 
 ## The variants
 
-| Graph | Calibration | Speckle | Terrain flattening | Output |
-|---|---|---|---|---|
-| `grd_gamma0_rtc` | beta0 | none | yes | gamma0 RTC |
-| `grd_gamma0_rtc_reflee` | beta0 | Refined Lee | yes | gamma0 RTC |
-| `grd_gamma0_rtc_leesigma` | beta0 | Lee Sigma 7x7 | yes | gamma0 RTC |
-| `grd_sigma0_ellipsoid` | sigma0 | none | **no** | sigma0, geocoded only |
+| Graph | Calibration | Speckle | Flattening | Geocoded | Output |
+|---|---|---|---|---|---|
+| `grd_gamma0_rtc` | beta0 | none | yes | yes | gamma0 RTC |
+| `grd_gamma0_rtc_reflee` | beta0 | Refined Lee | yes | yes | gamma0 RTC |
+| `grd_gamma0_rtc_leesigma` | beta0 | Lee Sigma 7x7 | yes | yes | gamma0 RTC |
+| `grd_gamma0_ellipsoid` | gamma0 | none | **no** | yes | gamma0, ellipsoid |
+| `grd_sigma0_ellipsoid` | sigma0 | none | **no** | yes | sigma0, ellipsoid |
+| `grd_tf_diagnostic` | beta0 | none | yes | **no** | flattened + simulated image |
 
 `grd_gamma0_rtc` is the baseline: it is the closest SNAP equivalent to the GA
 NRB, so it is what any "how does my processing compare to GA's" question should
-be asked against. `grd_sigma0_ellipsoid` is the control that shows what terrain
-flattening buys you over plain terrain correction.
+be asked against. The two `_ellipsoid` graphs are controls that show what
+terrain flattening buys you over plain terrain correction; `grd_gamma0_ellipsoid`
+is also the "turn flattening off for now" option, since it keeps the gamma0
+convention and so stays at least dimensionally comparable to the GA product.
 
 Common settings, chosen to match the GA NRB so no reprojection is needed before
 comparing: **20 m** pixel spacing, **UTM** (EPSG:32755 for Pilliga, 32756 for
@@ -66,11 +70,59 @@ that is otherwise inferred from the AOI folder name; `--list-variants` shows
 what is available. Finished jobs are skipped automatically, and a `.dim` with no
 matching `.data/` counts as unfinished rather than done.
 
+## Debugging terrain flattening
+
+Terrain flattening producing something that "looks geometrically wrong" almost
+never means the flattening parameters are wrong. Work through it in this order.
+
+**0. Check what you are looking at.** Terrain-Flattening output is still in
+radar geometry. It is *supposed* to look skewed. Only after Range-Doppler
+Terrain-Correction does it become a map. `grd_tf_diagnostic` deliberately stops
+before geocoding, so its output looks wrong by design.
+
+**1. The orbit.** SNAP's `continueOnFail` on Apply-Orbit-File silently falls
+back to the predicted orbit shipped in the product when the precise orbit cannot
+be downloaded. Flattening then divides the real image by a simulated image built
+from a misregistered orbit, which shows up as smeared or doubled terrain edges
+and bright/dark banding that follows the topography. Every step still reports
+success. All the graphs here set `continueOnFail=false` so this fails loudly
+instead.
+
+**2. Look at the simulated image.**
+
+```
+python tools/run_snap_grd.py <root> --variant grd_tf_diagnostic --gpt <path to gpt>
+```
+
+That writes the flattened bands *and* `simulatedImage` in radar geometry. Open
+both in SNAP and flicker between them. If the simulated terrain does not sit on
+top of the real terrain, the problem is the orbit or the DEM, not flattening.
+
+**3. The DEM.** SRTM 1Sec has voids over water and steep terrain, and its
+auto-download endpoint is unreliable; a void becomes a hole in the simulated
+area and a hole or spike in the output. Copernicus 30m is void-filled and is
+what GA uses. Swap without editing any XML:
+
+```
+python tools/run_snap_grd.py <root> --dem "SRTM 1Sec HGT"
+```
+
+**4. Oversampling.** `oversamplingMultiple` defaults to 1.0 in SNAP, which
+undersamples the simulated image relative to the SAR grid; over high relief the
+result is holed, striped or blocky. These graphs default to 2.0. Tune with
+`--oversampling` and `--overlap`.
+
+**5. Only then, turn it off.** `grd_gamma0_ellipsoid` removes flattening
+entirely. That isolates whether the fault is in flattening or upstream of it.
+It is a diagnostic, not a replacement: on slopes it differs from the GA NRB by
+several dB, and the error is correlated with the terrain, which is exactly the
+signal most analyses are trying to measure.
+
 ## Notes
 
-- `Apply-Orbit-File` uses `continueOnFail=false`. Precise orbits are published
-  ~20 days after acquisition and are available for all six scenes; failing loudly
-  beats silently geocoding against the predicted orbit.
+- `Apply-Orbit-File` uses `continueOnFail=false`. See "Debugging terrain
+  flattening" below -- this is the setting most likely to produce a product that
+  looks geometrically wrong while every step reports success.
 - `Remove-GRD-Border-Noise` is kept, but for IPF >= 2.90 (all of these 2024-25
   scenes) border noise is already handled by thermal noise removal.
 - The graphs are templated. `gpt` does not default `${...}` placeholders, so all
